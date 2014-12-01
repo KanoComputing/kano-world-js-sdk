@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Kano World JavaScript SDK Login example</title>
+    <script type="text/javascript" src="../dist/kano-world-sdk.js"></script>
+</head>
+<body>
+
+    <button data-kano-world-login>Login with Kano World</button>
+
+    <div id="error"></div>
+
+    <div id="panel" style='display: none;'>
+
+        <textarea id="profile-data" style='display: block; min-width: 300px; min-height: 300px;'></textarea><br>
+
+        <button id='save'>Save</button>
+        <button id='refresh'>Refresh</button>
+        <button data-kano-world-logout>Logout</button>
+
+    </div>
+
+    <script type="text/javascript">
+        KW_SDK.init(function (err) {
+            var dataBox = document.getElementById('profile-data');
+
+            if (err) {
+                return showError(err);
+            }
+
+            document.querySelector('[data-kano-world-login]').style.display = 'none';
+            document.getElementById('panel').style.display = 'block';
+
+            refreshData();
+
+            document.getElementById('save').onclick = function () {
+                KW_SDK.appStorage.set('example', JSON.parse(dataBox.value), function (err) {
+                    if (err) {
+                        return showError(err);
+                    }
+
+                    refreshData();
+                });
+            };
+
+            document.getElementById('refresh').onclick = refreshData;
+
+            function refreshData() {
+                KW_SDK.appStorage.get('example', function (err, data) {
+                    if (err) {
+                        return showError(err);
+                    }
+
+                    dataBox.value = JSON.stringify(data, null, 4);
+                });
+            }
+
+            function showError(err) {
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('error').innerHTML = 'Error: ' + err.toString();
+            }
+        });
+    </script>
+
+</body>
+</html>

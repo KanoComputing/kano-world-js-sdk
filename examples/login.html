@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Kano World JavaScript SDK Login example</title>
+    <script type="text/javascript" src="../dist/kano-world-sdk.js"></script>
+</head>
+<body>
+
+    <p>
+        <img id='user-avatar' style='display: none'>
+        Logged in: <span data-display-key="logged-in">...</span><br>
+        Login error: <span data-display-key="login-error">...</span><br>
+        Username: <span data-display-key="username">...</span><br>
+        User ID: <span data-display-key="userid">...</span><br>
+    </p>
+
+    <button data-kano-world-login>Login with Kano World</button>
+    <button data-kano-world-logout>Logout</button>
+
+    <script type="text/javascript">
+        KW_SDK.init(function (err) {
+            var user = KW_SDK.auth.getUser(),
+                avatar = document.getElementById('user-avatar');
+
+            displayValues({
+                'login-error' : err ? err.toString() : null,
+                'logged-in'   : user ? 'Yes' : 'No',
+                'username'    : user ? user.username : null,
+                'userid'      : user ? user.id : null
+            });
+
+            avatar.style.display = user ? 'block' : 'none';
+
+            if (user) {
+                avatar.setAttribute('src', 'http://avatar.kano.me/username/' + user.username + '.png');
+            }
+        });
+
+        function displayValues(values) {
+            var fields = document.querySelectorAll('[data-display-key]'),
+                i, key;
+
+            for (i = 0; i < fields.length; i += 1) {
+                key = fields[i].getAttribute('data-display-key');
+                fields[i].innerHTML = values[key] || 'None';
+            }
+        }
+    </script>
+
+</body>
+</html>
