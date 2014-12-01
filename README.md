@@ -30,7 +30,7 @@ KW_SDK.init();
 
 ### Kano World login
 
-There's several ways to enable login with Kano World - the first one with the use of a button, or any element with the attribute `data-kano-world-login` set:
+There are a few ways to enable login with Kano World - the first one with the use of a button, or any element with the attribute `data-kano-world-login` set:
 
 ```html
 <!-- Pressing the following button will prompt you to authorise this domain to login with Kano World. If the user logs in successfully, the SDK will pick it up and enable logged in features. -->
@@ -70,14 +70,14 @@ console.log(KW_SDK.auth.getUser());
 If you want to trigger the login on Kano World via code instead of using the button attribute, you can call:
 
 ```javascript
-auth.login();
+KW_SDK.auth.login();
 // This method will redirect to Kano World and come back after authentication complete.
 ```
 
 Also, you can logout by calling:
 
 ```javascript
-logout();
+KW_SDK.auth.logout();
 // This method will forget your token and refresh.
 ```
 
@@ -88,16 +88,22 @@ Once logged in, the app storage module allows you to access and change profile s
 Use it like this:
 
 ```javascript
-KW_SDK.appStorage.set('my-app-name', { level: 1 }, function (err) {
+KW_SDK.init(function (err) {
 	if (err) { throw err; }
 
-	// Data stored on your profile stats
-	
-	KW_SDK.appStorage.get('my-app-name', function (err, data) {
-		if (err) { throw err; }
+	// User logged in
 
-		console.log(data);
-		// { level: 1 }
+	KW_SDK.appStorage.set('my-app-name', { level: 1 }, function (err) {
+		if (err) { throw err; }
+	
+		// Data stored on your profile stats
+		
+		KW_SDK.appStorage.get('my-app-name', function (err, data) {
+			if (err) { throw err; }
+	
+			console.log(data);
+			// { level: 1 }
+		});
 	});
 });
 ```
