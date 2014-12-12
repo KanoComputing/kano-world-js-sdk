@@ -18,7 +18,9 @@
     <button data-kano-world-logout>Logout</button>
 
     <script type="text/javascript">
-        KW_SDK.init(function (err) {
+        KW_SDK.init(function (err, user) {
+            if (!user) { return; }
+
             var user = KW_SDK.auth.getUser(),
                 avatar = document.getElementById('user-avatar');
 

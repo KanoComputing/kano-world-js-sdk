@@ -21,7 +21,9 @@
     </div>
 
     <script type="text/javascript">
-        KW_SDK.init(function (err) {
+        KW_SDK.init(function (err, user) {
+            if (!user) { return; }
+
             var dataBox = document.getElementById('profile-data');
 
             if (err) {
