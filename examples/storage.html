@@ -21,7 +21,13 @@
     </div>
 
     <script type="text/javascript">
-        KW_SDK.init(function (err, user) {
+        var config = {
+            API_URL     : 'https://api.kano.me',
+            WORLD_URL   : 'http://world.kano.me'
+        };
+
+        var sdk = KW_SDK(config);
+        sdk.init(function (err, user) {
             if (!user) { return; }
 
             var dataBox = document.getElementById('profile-data');
@@ -36,7 +42,7 @@
             refreshData();
 
             document.getElementById('save').onclick = function () {
-                KW_SDK.appStorage.set('example', JSON.parse(dataBox.value), function (err) {
+                sdk.appStorage.set('example', JSON.parse(dataBox.value), function (err) {
                     if (err) {
                         return showError(err);
                     }
@@ -48,7 +54,7 @@
             document.getElementById('refresh').onclick = refreshData;
 
             function refreshData() {
-                KW_SDK.appStorage.get('example', function (err, data) {
+                sdk.appStorage.get('example', function (err, data) {
                     if (err) {
                         return showError(err);
                     }
