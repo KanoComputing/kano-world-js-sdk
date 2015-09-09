@@ -1,139 +1,129 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-var env = window.ENV || 'development';
-
-var config = {
-	development: {
-		WORLD_URL	: 'http://localhost:5000',
-		API_URL		: 'http://localhost:1234'
-	},
-	staging: {
-		WORLD_URL	: 'http://world-staging.kano.me',
-		API_URL		: 'http://api-staging.kano.me'
-	},
-	production: {
-		WORLD_URL	: 'http://world.kano.me',
-		API_URL		: 'https://api.kano.me'
-	}
+module.exports = {
+	WORLD_URL	: 'http://world.kano.me',
+	API_URL		: 'https://api.kano.me'
 };
 },{}],2:[function(require,module,exports){
-var auth = require('./auth'),
-    apiService = require('./kano-api'),
-    error = require('./error');
+var error = require('./error');
 
-function get(appName, callback) {
-    callback = callback || function () {};
+var auth, apiService;
 
-    var user = auth.getUser();
+module.exports = function (config) {
+    auth = require('./auth')(config);
+    apiService = require('./kano-api')(config);
 
-    if (!user) {
-        return callback(new Error('This action requires login'));
-    }
+    return {
+        get: function (appName, callback) {
+            callback = callback || function () {};
 
-    apiService.users.get.byId({ id: user.id })
-    .then(function (res) {
+            var user = auth.getUser();
 
-        callback(null, res.body.user.profile.stats[appName] || {});
+            if (!user) {
+                return callback(new Error('This action requires login'));
+            }
 
-    }, function (res) {
+            apiService.users.get.byId({ id: user.id })
+            .then(function (res) {
 
-        callback(new Error(res.body));
+                callback(null, res.body.user.profile.stats[appName] || {});
 
-    })
-    .catch(error.handle);
-}
+            }, function (res) {
 
-function set(appName, data, callback) {
-    var stats = {};
+                callback(new Error(res.body));
 
-    stats[appName] = data;
+            })
+            .catch(error.handle);
+        },
 
-    callback = callback || function () {};
+        set: function (appName, data, callback) {
+            var stats = {};
 
-    if (!auth.getUser()) {
-        return callback(new Error('This action requires login'));
-    }
+            stats[appName] = data;
 
-    apiService.users.profile.update({
-        stats: stats
-    })
-    .then(function (res) {
+            callback = callback || function () {};
 
-        callback(null, res.body.user.profile);
+            if (!auth.getUser()) {
+                return callback(new Error('This action requires login'));
+            }
 
-    }, function (res) {
+            apiService.users.profile.update({
+                stats: stats
+            })
+            .then(function (res) {
 
-        callback(new Error(res.body));
+                callback(null, res.body.user.profile);
 
-    })
-    .catch(error.handle);
-}
+            }, function (res) {
 
-module.exports = {
-    get : get,
-    set : set
+                callback(new Error(res.body));
+
+            })
+            .catch(error.handle);
+        }
+    };
 };
 },{"./auth":3,"./error":4,"./kano-api":5}],3:[function(require,module,exports){
-var config = require('../config'),
-    apiService = require('./kano-api'),
-    error = require('./error');
+var error = require('./error');
 
-var token = null,
+var apiService, auth,
+    token = null,
     session = null;
 
-function setToken(val) {
-    token = localStorage.KW_TOKEN = val;
+module.exports = function (config) {
+    config = config ? config : require('../config');
 
-    if (!token) {
-        localStorage.removeItem('KW_TOKEN');
-    }
-}
+    apiService = require('./kano-api')(config);
 
-function getToken() {
-    return token || localStorage.KW_TOKEN;
-}
+    auth = {
+        setToken: function (val) {
+            token = localStorage.KW_TOKEN = val;
 
-function login() {
-    location.href = config.WORLD_URL + '/external/login?redirect_url=' + location.href;
-}
+            if (!token) {
+                localStorage.removeItem('KW_TOKEN');
+            }
+        },
 
-function logout() {
-    setToken(null);
-    location.reload();
-}
+        getToken: function () {
+            return token || localStorage.KW_TOKEN;
+        },
 
-function getUser() {
-    return session ? session.user : null;
-}
+        login: function () {
+            location.href = config.WORLD_URL + '/external/login?redirect_url=' + location.href;
+        },
 
-function initSession(callback) {
-    apiService.auth.session.get()
-    .then(function (res) {
+        logout: function () {
+            auth.setToken(null);
+            location.reload();
+        },
 
-        session = res.body.session;
+        getUser: function () {
+            return session ? session.user : null;
+        },
 
-        if (callback) {
-            callback(null, session.user);
+        initSession: function (callback) {
+            apiService.auth.session.get()
+            .then(function (res) {
+
+                session = res.body.session;
+
+                if (callback) {
+                    callback(null, session.user);
+                }
+
+            }, function (res) {
+
+                auth.setToken(null);
+
+                if (callback) {
+                    callback(new Error(res.body));
+                }
+
+            })
+            .catch(error.handle);
         }
+    };
 
-    }, function (res) {
-
-        setToken(null);
-
-        if (callback) {
-            callback(new Error(res.body));
-        }
-
-    })
-    .catch(error.handle);
-}
-
-module.exports = {
-    setToken    : setToken,
-    getToken    : getToken,
-    login       : login,
-    logout      : logout,
-    initSession : initSession,
-    getUser     : getUser
+    return auth;
 };
 },{"../config":1,"./error":4,"./kano-api":5}],4:[function(require,module,exports){
 function handle(err) {
@@ -144,480 +134,489 @@ module.exports = {
     handle : handle
 };
 },{}],5:[function(require,module,exports){
-var Service = require('api-service'),
-    config = require('../config'),
-    middleware = require('./service-middleware');
-
-var apiService = new Service(config.API_URL)
-    .use(middleware)
-    .on('error', console.warn);
-
-apiService
-
-/*
- * Accounts
- */
-
-.add('accounts.activate', {
-    route  : '/accounts/activate/:code',
-    method : 'post'
-})
-
-.add('accounts.invalidate', {
-    route  : '/accounts/invalidate/:code',
-    method : 'post'
-})
-
-.add('accounts.password.reset', {
-    route  : '/accounts/reset-password',
-    method : 'post'
-})
-
-.add('accounts.password.change', {
-    route      : '/accounts/change-password',
-    method     : 'put'
-})
-
-.add('accounts.activation.resend', {
-    route      : '/accounts/resend-activation-code',
-    method     : 'post'
-})
-
-/*
- * Apps
- */
-
-.add('apps.list', {
-    method : 'get',
-    route  : '/apps'
-})
-
-.add('apps.get.byId', {
-    method : 'get',
-    route  : '/apps/:id'
-})
-
-.add('apps.get.bySlug', {
-    method : 'get',
-    route  : '/apps/slug/:slug'
-})
-
-.add('apps.get.categories', {
-    method : 'get',
-    route  : '/apps/categories'
-})
-
-.add('apps.like', {
-    method : 'post',
-    route  : '/apps/:id/like',
-})
-
-.add('apps.unlike', {
-    method : 'delete',
-    route  : '/apps/:id/like',
-})
-
-/*
- * Attachments
- */
-
-.add('attachments.post', {
-    method : 'post',
-    route  : '/attachments'
-})
-
-.add('attachments.list', {
-    route  : '/attachments/:type/:itemId'
-})
-
-.add('attachments.delete', {
-    method: 'delete',
-    route  : '/attachments/:id'
-})
-
-/*
- * Auth
- */
-
-.add('auth.post', {
-    method : 'post',
-    route  : '/auth'
-})
-
-.add('auth.session.get', {
-    method : 'get',
-    route  : '/auth/session'
-})
-
-.add('auth.session.get.asUser', {
-    method : 'get',
-    route  : '/auth/as-user/:id'
-})
-
-/*
- * Comments
- */
-
-.add('comments.post', {
-    method : 'post',
-    route  : '/comments'
-})
-
-.add('comments.list', {
-    method : 'get',
-    route  : '/comments/:type/:item_id'
-})
-
-.add('comments.listAll', {
-    method : 'get',
-    route  : '/comments'
-})
-
-.add('comments.flag', {
-    method : 'post',
-    route  : '/comments/flag/:id'
-})
-
-.add('comments.delete.byId', {
-    method : 'delete',
-    route  : '/comments/:id'
-})
-
-/*
- * Forum
- */
-
-.add('forum.categories.list', {
-    method : 'get',
-    route  : '/forum/categories'
-})
-
-.add('forum.categories.get.byId', {
-    method : 'get',
-    route  : '/forum/categories/:id'
-})
-
-.add('forum.categories.get.bySlug', {
-    method : 'get',
-    route  : '/forum/categories/slug/:slug'
-})
-
-.add('forum.topics.list', {
-    method : 'get',
-    route  : '/forum/topics'
-})
-
-.add('forum.topics.post', {
-    method : 'post',
-    route  : '/forum/topics'
-})
-
-.add('forum.topics.delete', {
-    method : 'delete',
-    route  : '/forum/topics/:id'
-})
-
-.add('forum.topics.get.byId', {
-    method : 'get',
-    route  : '/forum/topics/:id'
-})
-
-.add('forum.topics.get.bySlug', {
-    method : 'get',
-    route  : '/forum/topics/slug/:slug'
-})
-
-.add('forum.modt.get', {
-    method : 'get',
-    route  : '/forum/modt'
-})
-
-.add('forum.search', {
-    method : 'get',
-    route  : '/forum/search'
-})
-
-/*
- * Leaderboards
- */
-
-.add('leaderboard.get', {
-    method : 'get',
-    route  : '/leaderboard'
-})
-
-/*
- * News
- */
-
-.add('news.list', {
-    method : 'get',
-    route  : '/news'
-})
-
-.add('news.get.byId', {
-    method : 'get',
-    route  : '/news/:id'
-})
-
-.add('news.get.bySlug', {
-    method : 'get',
-    route  : '/news/slug/:slug'
-})
-
-/*
- * Notifications
- */
-
-.add('notifications.get', {
-    method : 'get',
-    route  : '/notifications'
-})
-
-.add('notifications.read', {
-    method : 'post',
-    route  : '/notifications/read/:id'
-})
-
-.add('notifications.readAll', {
-    method : 'post',
-    route  : '/notifications/read'
-})
-
-/*
- * Projects
- */
-
-.add('projects.post', {
-    method : 'post',
-    route  : '/projects'
-})
-
-.add('projects.list', {
-    method : 'get',
-    route  : '/projects'
-})
-
-.add('projects.get.byId', {
-    method : 'get',
-    route  : '/projects/:id'
-})
-
-.add('projects.get.bySlug', {
-    method : 'get',
-    route  : '/projects/slug/:slug'
-})
-
-.add('projects.get.categories', {
-    method : 'get',
-    route  : '/projects/categories'
-})
-
-.add('projects.update', {
-    method : 'put',
-    route  : '/projects/:id'
-})
-
-.add('projects.delete', {
-    method : 'delete',
-    route  : '/projects/:id'
-})
-
-.add('projects.like', {
-    method : 'post',
-    route  : '/projects/:id/like'
-})
-
-.add('projects.unlike', {
-    method : 'delete',
-    route  : '/projects/:id/like'
-})
-
-/*
- * Share
- */
-
-.add('share.list', {
-    method : 'get',
-    route  : '/share'
-})
-
-.add('share.get.byId', {
-    method : 'get',
-    route  : '/share/:id'
-})
-
-.add('share.get.bySlug', {
-    method : 'get',
-    route  : '/share/slug/:slug'
-})
-
-.add('share.delete.byId', {
-    method : 'delete',
-    route  : '/share/:id'
-})
-
-.add('share.like', {
-    method : 'post',
-    route  : '/share/:id/like'
-})
-
-.add('share.unlike', {
-    method : 'delete',
-    route  : '/share/:id/like'
-})
-
-.add('share.flag', {
-    method : 'post',
-    route  : '/share/flag/:id'
-})
-
-.add('share.count', {
-    method : 'get',
-    route  : '/share/count'
-})
-
-.add('share.post', {
-    method : 'post',
-    route  : '/share/:app'
-})
-
-/*
- * Stats
- */
-
-.add('stats.get.activity', {
-    method : 'get',
-    route  : 'stats/activity'
-})
-
-/*
- * Sync
- */
-
-.add('sync.settings.get', {
-    method : 'get',
-    route  : 'sync/settings'
-})
-
-.add('sync.settings.update', {
-    method : 'put',
-    route  : 'sync/settings'
-})
-
-/*
- * Users
- */
-
-.add('users.post', {
-    method : 'post',
-    route  : '/users'
-})
-
-.add('users.get.byId', {
-    method : 'get',
-    route  : '/users/:id'
-})
-
-.add('users.get.byUsername', {
-    method : 'get',
-    route  : '/users/username/:username'
-})
-
-.add('users.get.following', {
-    method : 'get',
-    route  : '/users/:id/following'
-})
-
-.add('users.get.followers', {
-    method : 'get',
-    route  : '/users/:id/followers'
-})
-
-.add('users.profile.update', {
-    method : 'put',
-    route  : '/users/profile'
-})
-
-.add('users.list', {
-    method : 'get',
-    route  : '/users'
-})
-
-.add('users.follow', {
-    method : 'post',
-    route  : '/users/follow/:id'
-})
-
-.add('users.unfollow', {
-    method : 'delete',
-    route  : '/users/follow/:id'
-})
-
-.add('users.delete', {
-    method : 'delete',
-    route  : '/users'
-});
-
-module.exports = apiService;
+var Service = require('api-service');
+
+module.exports = function (config) {
+    config = config ? config : require('../config');
+    middleware = require('./service-middleware')(config);
+
+    var apiService = new Service(config.API_URL)
+        .use(middleware)
+        .on('error', console.warn);
+
+    return apiService
+
+        /*
+         * Accounts
+         */
+
+        .add('accounts.activate', {
+            route  : '/accounts/activate/:code',
+            method : 'post'
+        })
+
+        .add('accounts.invalidate', {
+            route  : '/accounts/invalidate/:code',
+            method : 'post'
+        })
+
+        .add('accounts.password.reset', {
+            route  : '/accounts/reset-password',
+            method : 'post'
+        })
+
+        .add('accounts.password.change', {
+            route      : '/accounts/change-password',
+            method     : 'put'
+        })
+
+        .add('accounts.activation.resend', {
+            route      : '/accounts/resend-activation-code',
+            method     : 'post'
+        })
+
+        /*
+         * Apps
+         */
+
+        .add('apps.list', {
+            method : 'get',
+            route  : '/apps'
+        })
+
+        .add('apps.get.byId', {
+            method : 'get',
+            route  : '/apps/:id'
+        })
+
+        .add('apps.get.bySlug', {
+            method : 'get',
+            route  : '/apps/slug/:slug'
+        })
+
+        .add('apps.get.categories', {
+            method : 'get',
+            route  : '/apps/categories'
+        })
+
+        .add('apps.like', {
+            method : 'post',
+            route  : '/apps/:id/like',
+        })
+
+        .add('apps.unlike', {
+            method : 'delete',
+            route  : '/apps/:id/like',
+        })
+
+        /*
+         * Attachments
+         */
+
+        .add('attachments.post', {
+            method : 'post',
+            route  : '/attachments'
+        })
+
+        .add('attachments.list', {
+            route  : '/attachments/:type/:itemId'
+        })
+
+        .add('attachments.delete', {
+            method: 'delete',
+            route  : '/attachments/:id'
+        })
+
+        /*
+         * Auth
+         */
+
+        .add('auth.post', {
+            method : 'post',
+            route  : '/auth'
+        })
+
+        .add('auth.session.get', {
+            method : 'get',
+            route  : '/auth/session'
+        })
+
+        .add('auth.session.get.asUser', {
+            method : 'get',
+            route  : '/auth/as-user/:id'
+        })
+
+        /*
+         * Comments
+         */
+
+        .add('comments.post', {
+            method : 'post',
+            route  : '/comments'
+        })
+
+        .add('comments.list', {
+            method : 'get',
+            route  : '/comments/:type/:item_id'
+        })
+
+        .add('comments.listAll', {
+            method : 'get',
+            route  : '/comments'
+        })
+
+        .add('comments.flag', {
+            method : 'post',
+            route  : '/comments/flag/:id'
+        })
+
+        .add('comments.delete.byId', {
+            method : 'delete',
+            route  : '/comments/:id'
+        })
+
+        /*
+         * Forum
+         */
+
+        .add('forum.categories.list', {
+            method : 'get',
+            route  : '/forum/categories'
+        })
+
+        .add('forum.categories.get.byId', {
+            method : 'get',
+            route  : '/forum/categories/:id'
+        })
+
+        .add('forum.categories.get.bySlug', {
+            method : 'get',
+            route  : '/forum/categories/slug/:slug'
+        })
+
+        .add('forum.topics.list', {
+            method : 'get',
+            route  : '/forum/topics'
+        })
+
+        .add('forum.topics.post', {
+            method : 'post',
+            route  : '/forum/topics'
+        })
+
+        .add('forum.topics.delete', {
+            method : 'delete',
+            route  : '/forum/topics/:id'
+        })
+
+        .add('forum.topics.get.byId', {
+            method : 'get',
+            route  : '/forum/topics/:id'
+        })
+
+        .add('forum.topics.get.bySlug', {
+            method : 'get',
+            route  : '/forum/topics/slug/:slug'
+        })
+
+        .add('forum.modt.get', {
+            method : 'get',
+            route  : '/forum/modt'
+        })
+
+        .add('forum.search', {
+            method : 'get',
+            route  : '/forum/search'
+        })
+
+        /*
+         * Leaderboards
+         */
+
+        .add('leaderboard.get', {
+            method : 'get',
+            route  : '/leaderboard'
+        })
+
+        /*
+         * News
+         */
+
+        .add('news.list', {
+            method : 'get',
+            route  : '/news'
+        })
+
+        .add('news.get.byId', {
+            method : 'get',
+            route  : '/news/:id'
+        })
+
+        .add('news.get.bySlug', {
+            method : 'get',
+            route  : '/news/slug/:slug'
+        })
+
+        /*
+         * Notifications
+         */
+
+        .add('notifications.get', {
+            method : 'get',
+            route  : '/notifications'
+        })
+
+        .add('notifications.read', {
+            method : 'post',
+            route  : '/notifications/read/:id'
+        })
+
+        .add('notifications.readAll', {
+            method : 'post',
+            route  : '/notifications/read'
+        })
+
+        /*
+         * Projects
+         */
+
+        .add('projects.post', {
+            method : 'post',
+            route  : '/projects'
+        })
+
+        .add('projects.list', {
+            method : 'get',
+            route  : '/projects'
+        })
+
+        .add('projects.get.byId', {
+            method : 'get',
+            route  : '/projects/:id'
+        })
+
+        .add('projects.get.bySlug', {
+            method : 'get',
+            route  : '/projects/slug/:slug'
+        })
+
+        .add('projects.get.categories', {
+            method : 'get',
+            route  : '/projects/categories'
+        })
+
+        .add('projects.update', {
+            method : 'put',
+            route  : '/projects/:id'
+        })
+
+        .add('projects.delete', {
+            method : 'delete',
+            route  : '/projects/:id'
+        })
+
+        .add('projects.like', {
+            method : 'post',
+            route  : '/projects/:id/like'
+        })
+
+        .add('projects.unlike', {
+            method : 'delete',
+            route  : '/projects/:id/like'
+        })
+
+        /*
+         * Share
+         */
+
+        .add('share.list', {
+            method : 'get',
+            route  : '/share'
+        })
+
+        .add('share.get.byId', {
+            method : 'get',
+            route  : '/share/:id'
+        })
+
+        .add('share.get.bySlug', {
+            method : 'get',
+            route  : '/share/slug/:slug'
+        })
+
+        .add('share.delete.byId', {
+            method : 'delete',
+            route  : '/share/:id'
+        })
+
+        .add('share.like', {
+            method : 'post',
+            route  : '/share/:id/like'
+        })
+
+        .add('share.unlike', {
+            method : 'delete',
+            route  : '/share/:id/like'
+        })
+
+        .add('share.flag', {
+            method : 'post',
+            route  : '/share/flag/:id'
+        })
+
+        .add('share.count', {
+            method : 'get',
+            route  : '/share/count'
+        })
+
+        .add('share.post', {
+            method : 'post',
+            route  : '/share/:app'
+        })
+
+        /*
+         * Stats
+         */
+
+        .add('stats.get.activity', {
+            method : 'get',
+            route  : 'stats/activity'
+        })
+
+        /*
+         * Sync
+         */
+
+        .add('sync.settings.get', {
+            method : 'get',
+            route  : 'sync/settings'
+        })
+
+        .add('sync.settings.update', {
+            method : 'put',
+            route  : 'sync/settings'
+        })
+
+        /*
+         * Users
+         */
+
+        .add('users.post', {
+            method : 'post',
+            route  : '/users'
+        })
+
+        .add('users.get.byId', {
+            method : 'get',
+            route  : '/users/:id'
+        })
+
+        .add('users.get.byUsername', {
+            method : 'get',
+            route  : '/users/username/:username'
+        })
+
+        .add('users.get.following', {
+            method : 'get',
+            route  : '/users/:id/following'
+        })
+
+        .add('users.get.followers', {
+            method : 'get',
+            route  : '/users/:id/followers'
+        })
+
+        .add('users.profile.update', {
+            method : 'put',
+            route  : '/users/profile'
+        })
+
+        .add('users.list', {
+            method : 'get',
+            route  : '/users'
+        })
+
+        .add('users.follow', {
+            method : 'post',
+            route  : '/users/follow/:id'
+        })
+
+        .add('users.unfollow', {
+            method : 'delete',
+            route  : '/users/follow/:id'
+        })
+
+        .add('users.delete', {
+            method : 'delete',
+            route  : '/users'
+        });
+};
 },{"../config":1,"./service-middleware":6,"api-service":9}],6:[function(require,module,exports){
-var config = require('../config');
+module.exports = function (config) {
+	var middleware =  function (req, next) {
+	    req.setRequestHeader('Accept', 'application/vnd.kano+json; version=' + config.apiVersion);
 
-module.exports = function (req, next) {
-    req.setRequestHeader('Accept', 'application/vnd.kano+json; version=' + config.apiVersion);
+	    if (localStorage.KW_TOKEN) {
+	        req.setRequestHeader('Authorization', localStorage.KW_TOKEN);
+	    }
 
-    if (localStorage.KW_TOKEN) {
-        req.setRequestHeader('Authorization', localStorage.KW_TOKEN);
-    }
+	    next();
+	};
 
-    next();
+	return middleware;
 };
-},{"../config":1}],7:[function(require,module,exports){
-var auth = require('./core/auth'),
-    urlUtil = require('./util/url'),
-    appStorage = require('./core/appStorage'),
-    apiService = require('./core/kano-api');
+},{}],7:[function(require,module,exports){
+var urlUtil = require('./util/url');
 
-function init(callback) {
-    var token = urlUtil.getQueryParam('token'),
-        loginError = urlUtil.getQueryParam('loginError');
+var sdk, auth, apiService, appStorage;
 
-    if (token) {
-        auth.setToken(token);
-        window.location.search = '';
-    } else {
-        token = auth.getToken();
-    }
+sdk = function (config) {
+    auth = require('./core/auth')(config);
+    apiService = require('./core/kano-api')(config);
+    appStorage = require('./core/appStorage')(config);
 
-    if (token) {
+    function bindEvents() {
+        document.addEventListener('click', function (e) {
+            if (e.target.hasAttribute('data-kano-world-login')) {
+                auth.login();
+            } else if (e.target.hasAttribute('data-kano-world-logout')) {
+                auth.logout();
+            }
+        });
+    };
 
-        auth.initSession(callback);
+    function init(callback) {
+        var token = urlUtil.getQueryParam('token'),
+            loginError = urlUtil.getQueryParam('loginError');
 
-    } else if (loginError) {
-        callback(new Error(loginError), null);
-    } else {
-        callback(null, null);
-    }
-
-    bindEvents();
-}
-
-function bindEvents() {
-    document.addEventListener('click', function (e) {
-        if (e.target.hasAttribute('data-kano-world-login')) {
-            auth.login();
-        } else if (e.target.hasAttribute('data-kano-world-logout')) {
-            auth.logout();
+        if (token) {
+            auth.setToken(token);
+            window.location.search = '';
+        } else {
+            token = auth.getToken();
         }
-    });
-}
 
-var sdk = {
-    auth       : auth,
-    init       : init,
-    appStorage : appStorage,
-    api        : apiService
+        if (token) {
+
+            auth.initSession(callback);
+
+        } else if (loginError) {
+            callback(new Error(loginError), null);
+        } else {
+            callback(null, null);
+        }
+
+        bindEvents();
+    }
+
+    return {
+        auth       : auth,
+        appStorage : appStorage,
+        api        : apiService,
+        init       : init
+    };
 };
+    
 
 if (module) {
     module.exports = sdk;
