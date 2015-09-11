@@ -7,7 +7,7 @@
 You can import the sdk as a JS build:
 
 ```html
-<script type='text/javscript' src='dist/kano-world-sdk.js'></script>
+<script type='text/javascript' src='dist/kano-world-sdk.js'></script>
 ```
 
 or with npm:
@@ -17,7 +17,12 @@ npm install --save kano-world-sdk
 ```
 
 ```javascript
-var KW_SDK = require('kano-world-sdk');
+var config = {
+	API_URL     : 'https://api.kano.me',
+	WORLD_URL   : 'http://world.kano.me'
+};
+
+var KW_SDK = require('kano-world-sdk')(config);
 ```
 
 ### Usage

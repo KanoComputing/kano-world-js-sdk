@@ -1,131 +1,131 @@
-(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({"/Users/tanc/projects/kano-world-sdk/lib/config.js":[function(require,module,exports){
-var TEST_MODE = false;
-
+(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 module.exports = {
-    WORLD_URL : TEST_MODE ? 'http://localhost:5000' : 'http://world.kano.me',
-    API_URL   :TEST_MODE ? 'http://localhost:1234' : 'https://api.kano.me',
+	WORLD_URL	: 'http://world.kano.me',
+	API_URL		: 'https://api.kano.me'
 };
-},{}],"/Users/tanc/projects/kano-world-sdk/lib/core/appStorage.js":[function(require,module,exports){
-var auth = require('./auth'),
-    apiService = require('./kano-api'),
-    error = require('./error');
+},{}],2:[function(require,module,exports){
+var error = require('./error');
 
-function get(appName, callback) {
-    callback = callback || function () {};
+var auth, apiService;
 
-    var user = auth.getUser();
+module.exports = function (config) {
+    auth = require('./auth')(config);
+    apiService = require('./kano-api')(config);
 
-    if (!user) {
-        return callback(new Error('This action requires login'));
-    }
+    return {
+        get: function (appName, callback) {
+            callback = callback || function () {};
 
-    apiService.users.get.byId({ id: user.id })
-    .then(function (res) {
+            var user = auth.getUser();
 
-        callback(null, res.body.user.profile.stats[appName] || {});
+            if (!user) {
+                return callback(new Error('This action requires login'));
+            }
 
-    }, function (res) {
+            apiService.users.get.byId({ id: user.id })
+            .then(function (res) {
 
-        callback(new Error(res.body));
+                callback(null, res.body.user.profile.stats[appName] || {});
 
-    })
-    .catch(error.handle);
-}
+            }, function (res) {
 
-function set(appName, data, callback) {
-    var stats = {};
+                callback(new Error(res.body));
 
-    stats[appName] = data;
+            })
+            .catch(error.handle);
+        },
 
-    callback = callback || function () {};
+        set: function (appName, data, callback) {
+            var stats = {};
 
-    if (!auth.getUser()) {
-        return callback(new Error('This action requires login'));
-    }
+            stats[appName] = data;
 
-    apiService.users.profile.update({
-        stats: stats
-    })
-    .then(function (res) {
+            callback = callback || function () {};
 
-        callback(null, res.body.user.profile);
+            if (!auth.getUser()) {
+                return callback(new Error('This action requires login'));
+            }
 
-    }, function (res) {
+            apiService.users.profile.update({
+                stats: stats
+            })
+            .then(function (res) {
 
-        callback(new Error(res.body));
+                callback(null, res.body.user.profile);
 
-    })
-    .catch(error.handle);
-}
+            }, function (res) {
 
-module.exports = {
-    get : get,
-    set : set
+                callback(new Error(res.body));
+
+            })
+            .catch(error.handle);
+        }
+    };
 };
-},{"./auth":"/Users/tanc/projects/kano-world-sdk/lib/core/auth.js","./error":"/Users/tanc/projects/kano-world-sdk/lib/core/error.js","./kano-api":"/Users/tanc/projects/kano-world-sdk/lib/core/kano-api.js"}],"/Users/tanc/projects/kano-world-sdk/lib/core/auth.js":[function(require,module,exports){
-var config = require('../config'),
-    apiService = require('./kano-api'),
-    error = require('./error');
+},{"./auth":3,"./error":4,"./kano-api":5}],3:[function(require,module,exports){
+var error = require('./error');
 
-var token = null,
+var apiService, auth,
+    token = null,
     session = null;
 
-function setToken(val) {
-    token = localStorage.KW_TOKEN = val;
+module.exports = function (config) {
+    config = config ? config : require('../config');
 
-    if (!token) {
-        localStorage.removeItem('KW_TOKEN');
-    }
-}
+    apiService = require('./kano-api')(config);
 
-function getToken() {
-    return token || localStorage.KW_TOKEN;
-}
+    auth = {
+        setToken: function (val) {
+            token = localStorage.KW_TOKEN = val;
 
-function login() {
-    location.href = config.WORLD_URL + '/external/login?redirect_url=' + location.href;
-}
+            if (!token) {
+                localStorage.removeItem('KW_TOKEN');
+            }
+        },
 
-function logout() {
-    setToken(null);
-    location.reload();
-}
+        getToken: function () {
+            return token || localStorage.KW_TOKEN;
+        },
 
-function getUser() {
-    return session ? session.user : null;
-}
+        login: function () {
+            location.href = config.WORLD_URL + '/external/login?redirect_url=' + location.href;
+        },
 
-function initSession(callback) {
-    apiService.auth.session.get()
-    .then(function (res) {
+        logout: function () {
+            auth.setToken(null);
+            location.reload();
+        },
 
-        session = res.body.session;
+        getUser: function () {
+            return session ? session.user : null;
+        },
 
-        if (callback) {
-            callback(null, session.user);
+        initSession: function (callback) {
+            apiService.auth.session.get()
+            .then(function (res) {
+
+                session = res.body.session;
+
+                if (callback) {
+                    callback(null, session.user);
+                }
+
+            }, function (res) {
+
+                auth.setToken(null);
+
+                if (callback) {
+                    callback(new Error(res.body));
+                }
+
+            })
+            .catch(error.handle);
         }
+    };
 
-    }, function (res) {
-
-        setToken(null);
-
-        if (callback) {
-            callback(new Error(res.body));
-        }
-
-    })
-    .catch(error.handle);
-}
-
-module.exports = {
-    setToken    : setToken,
-    getToken    : getToken,
-    login       : login,
-    logout      : logout,
-    initSession : initSession,
-    getUser     : getUser
+    return auth;
 };
-},{"../config":"/Users/tanc/projects/kano-world-sdk/lib/config.js","./error":"/Users/tanc/projects/kano-world-sdk/lib/core/error.js","./kano-api":"/Users/tanc/projects/kano-world-sdk/lib/core/kano-api.js"}],"/Users/tanc/projects/kano-world-sdk/lib/core/error.js":[function(require,module,exports){
+},{"../config":1,"./error":4,"./kano-api":5}],4:[function(require,module,exports){
 function handle(err) {
     console.error('[ CAUGHT ]', err && err.stack ? err.stack : err);
 }
@@ -133,474 +133,490 @@ function handle(err) {
 module.exports = {
     handle : handle
 };
-},{}],"/Users/tanc/projects/kano-world-sdk/lib/core/kano-api.js":[function(require,module,exports){
-var Service = require('api-service'),
-    config = require('../config'),
-    middleware = require('./service-middleware');
-
-var apiService = new Service(config.API_URL)
-    .use(middleware)
-    .on('error', console.warn);
-
-apiService
-
-/*
- * Accounts
- */
-
-.add('accounts.activate', {
-    route  : '/accounts/activate/:code',
-    method : 'post'
-})
-
-.add('accounts.invalidate', {
-    route  : '/accounts/invalidate/:code',
-    method : 'post'
-})
-
-.add('accounts.password.reset', {
-    route  : '/accounts/reset-password',
-    method : 'post'
-})
-
-.add('accounts.password.change', {
-    route      : '/accounts/change-password',
-    method     : 'put'
-})
-
-.add('accounts.activation.resend', {
-    route      : '/accounts/resend-activation-code',
-    method     : 'post'
-})
-
-/*
- * Apps
- */
-
-.add('apps.list', {
-    method : 'get',
-    route  : '/apps'
-})
-
-.add('apps.get.byId', {
-    method : 'get',
-    route  : '/apps/:id'
-})
-
-.add('apps.get.bySlug', {
-    method : 'get',
-    route  : '/apps/slug/:slug'
-})
-
-.add('apps.get.categories', {
-    method : 'get',
-    route  : '/apps/categories'
-})
-
-.add('apps.like', {
-    method : 'post',
-    route  : '/apps/:id/like',
-})
-
-.add('apps.unlike', {
-    method : 'delete',
-    route  : '/apps/:id/like',
-})
-
-/*
- * Attachments
- */
-
-.add('attachments.post', {
-    method : 'post',
-    route  : '/attachments'
-})
-
-.add('attachments.list', {
-    route  : '/attachments/:type/:itemId'
-})
-
-.add('attachments.delete', {
-    method: 'delete',
-    route  : '/attachments/:id'
-})
-
-/*
- * Auth
- */
-
-.add('auth.post', {
-    method : 'post',
-    route  : '/auth'
-})
-
-.add('auth.session.get', {
-    method : 'get',
-    route  : '/auth/session'
-})
-
-.add('auth.session.get.asUser', {
-    method : 'get',
-    route  : '/auth/as-user/:id'
-})
-
-/*
- * Comments
- */
-
-.add('comments.post', {
-    method : 'post',
-    route  : '/comments'
-})
-
-.add('comments.list', {
-    method : 'get',
-    route  : '/comments/:type/:item_id'
-})
-
-.add('comments.listAll', {
-    method : 'get',
-    route  : '/comments'
-})
-
-.add('comments.flag', {
-    method : 'post',
-    route  : '/comments/flag/:id'
-})
-
-.add('comments.delete.byId', {
-    method : 'delete',
-    route  : '/comments/:id'
-})
-
-/*
- * Forum
- */
-
-.add('forum.categories.list', {
-    method : 'get',
-    route  : '/forum/categories'
-})
-
-.add('forum.categories.get.byId', {
-    method : 'get',
-    route  : '/forum/categories/:id'
-})
-
-.add('forum.categories.get.bySlug', {
-    method : 'get',
-    route  : '/forum/categories/slug/:slug'
-})
-
-.add('forum.topics.list', {
-    method : 'get',
-    route  : '/forum/topics'
-})
-
-.add('forum.topics.post', {
-    method : 'post',
-    route  : '/forum/topics'
-})
-
-.add('forum.topics.delete', {
-    method : 'delete',
-    route  : '/forum/topics/:id'
-})
-
-.add('forum.topics.get.byId', {
-    method : 'get',
-    route  : '/forum/topics/:id'
-})
-
-.add('forum.topics.get.bySlug', {
-    method : 'get',
-    route  : '/forum/topics/slug/:slug'
-})
-
-.add('forum.modt.get', {
-    method : 'get',
-    route  : '/forum/modt'
-})
-
-.add('forum.search', {
-    method : 'get',
-    route  : '/forum/search'
-})
-
-/*
- * Leaderboards
- */
-
-.add('leaderboard.get', {
-    method : 'get',
-    route  : '/leaderboard'
-})
-
-/*
- * News
- */
-
-.add('news.list', {
-    method : 'get',
-    route  : '/news'
-})
-
-.add('news.get.byId', {
-    method : 'get',
-    route  : '/news/:id'
-})
-
-.add('news.get.bySlug', {
-    method : 'get',
-    route  : '/news/slug/:slug'
-})
-
-/*
- * Notifications
- */
-
-.add('notifications.get', {
-    method : 'get',
-    route  : '/notifications'
-})
-
-.add('notifications.read', {
-    method : 'post',
-    route  : '/notifications/read/:id'
-})
-
-.add('notifications.readAll', {
-    method : 'post',
-    route  : '/notifications/read'
-})
-
-/*
- * Projects
- */
-
-.add('projects.post', {
-    method : 'post',
-    route  : '/projects'
-})
-
-.add('projects.list', {
-    method : 'get',
-    route  : '/projects'
-})
-
-.add('projects.get.byId', {
-    method : 'get',
-    route  : '/projects/:id'
-})
-
-.add('projects.get.bySlug', {
-    method : 'get',
-    route  : '/projects/slug/:slug'
-})
-
-.add('projects.get.categories', {
-    method : 'get',
-    route  : '/projects/categories'
-})
-
-.add('projects.update', {
-    method : 'put',
-    route  : '/projects/:id'
-})
-
-.add('projects.delete', {
-    method : 'delete',
-    route  : '/projects/:id'
-})
-
-.add('projects.like', {
-    method : 'post',
-    route  : '/projects/:id/like'
-})
-
-.add('projects.unlike', {
-    method : 'delete',
-    route  : '/projects/:id/like'
-})
-
-/*
- * Share
- */
-
-.add('share.list', {
-    method : 'get',
-    route  : '/share'
-})
-
-.add('share.get.byId', {
-    method : 'get',
-    route  : '/share/:id'
-})
-
-.add('share.get.bySlug', {
-    method : 'get',
-    route  : '/share/slug/:slug'
-})
-
-.add('share.delete.byId', {
-    method : 'delete',
-    route  : '/share/:id'
-})
-
-.add('share.like', {
-    method : 'post',
-    route  : '/share/:id/like'
-})
-
-.add('share.unlike', {
-    method : 'delete',
-    route  : '/share/:id/like'
-})
-
-.add('share.flag', {
-    method : 'post',
-    route  : '/share/flag/:id'
-})
-
-.add('share.count', {
-    method : 'get',
-    route  : '/share/count'
-})
-
-/*
- * Stats
- */
-
-.add('stats.get.activity', {
-    method : 'get',
-    route  : 'stats/activity'
-})
-
-/*
- * Sync
- */
-
-.add('sync.settings.get', {
-    method : 'get',
-    route  : 'sync/settings'
-})
-
-.add('sync.settings.update', {
-    method : 'put',
-    route  : 'sync/settings'
-})
-
-/*
- * Users
- */
-
-.add('users.post', {
-    method : 'post',
-    route  : '/users'
-})
-
-.add('users.get.byId', {
-    method : 'get',
-    route  : '/users/:id'
-})
-
-.add('users.get.byUsername', {
-    method : 'get',
-    route  : '/users/username/:username'
-})
-
-.add('users.get.following', {
-    method : 'get',
-    route  : '/users/:id/following'
-})
-
-.add('users.get.followers', {
-    method : 'get',
-    route  : '/users/:id/followers'
-})
-
-.add('users.profile.update', {
-    method : 'put',
-    route  : '/users/profile'
-})
-
-.add('users.list', {
-    method : 'get',
-    route  : '/users'
-})
-
-.add('users.follow', {
-    method : 'post',
-    route  : '/users/follow/:id'
-})
-
-.add('users.unfollow', {
-    method : 'delete',
-    route  : '/users/follow/:id'
-})
-
-.add('users.delete', {
-    method : 'delete',
-    route  : '/users'
-});
-
-module.exports = apiService;
-},{"../config":"/Users/tanc/projects/kano-world-sdk/lib/config.js","./service-middleware":"/Users/tanc/projects/kano-world-sdk/lib/core/service-middleware.js","api-service":"/Users/tanc/projects/kano-world-sdk/node_modules/api-service/lib/Service.js"}],"/Users/tanc/projects/kano-world-sdk/lib/core/service-middleware.js":[function(require,module,exports){
-var config = require('../config');
-
-module.exports = function (req, next) {
-    req.setRequestHeader('Accept', 'application/vnd.kano+json; version=' + config.apiVersion);
-
-    if (localStorage.KW_TOKEN) {
-        req.setRequestHeader('Authorization', localStorage.KW_TOKEN);
-    }
-
-    next();
+},{}],5:[function(require,module,exports){
+var Service = require('api-service');
+
+module.exports = function (config) {
+    config = config ? config : require('../config');
+    middleware = require('./service-middleware')(config);
+
+    var apiService = new Service(config.API_URL)
+        .use(middleware)
+        .on('error', console.warn);
+
+    return apiService
+
+        /*
+         * Accounts
+         */
+
+        .add('accounts.activate', {
+            route  : '/accounts/activate/:code',
+            method : 'post'
+        })
+
+        .add('accounts.invalidate', {
+            route  : '/accounts/invalidate/:code',
+            method : 'post'
+        })
+
+        .add('accounts.password.reset', {
+            route  : '/accounts/reset-password',
+            method : 'post'
+        })
+
+        .add('accounts.password.change', {
+            route      : '/accounts/change-password',
+            method     : 'put'
+        })
+
+        .add('accounts.activation.resend', {
+            route      : '/accounts/resend-activation-code',
+            method     : 'post'
+        })
+
+        /*
+         * Apps
+         */
+
+        .add('apps.list', {
+            method : 'get',
+            route  : '/apps'
+        })
+
+        .add('apps.get.byId', {
+            method : 'get',
+            route  : '/apps/:id'
+        })
+
+        .add('apps.get.bySlug', {
+            method : 'get',
+            route  : '/apps/slug/:slug'
+        })
+
+        .add('apps.get.categories', {
+            method : 'get',
+            route  : '/apps/categories'
+        })
+
+        .add('apps.like', {
+            method : 'post',
+            route  : '/apps/:id/like',
+        })
+
+        .add('apps.unlike', {
+            method : 'delete',
+            route  : '/apps/:id/like',
+        })
+
+        /*
+         * Attachments
+         */
+
+        .add('attachments.post', {
+            method : 'post',
+            route  : '/attachments'
+        })
+
+        .add('attachments.list', {
+            route  : '/attachments/:type/:itemId'
+        })
+
+        .add('attachments.delete', {
+            method: 'delete',
+            route  : '/attachments/:id'
+        })
+
+        /*
+         * Auth
+         */
+
+        .add('auth.post', {
+            method : 'post',
+            route  : '/auth'
+        })
+
+        .add('auth.session.get', {
+            method : 'get',
+            route  : '/auth/session'
+        })
+
+        .add('auth.session.get.asUser', {
+            method : 'get',
+            route  : '/auth/as-user/:id'
+        })
+
+        /*
+         * Comments
+         */
+
+        .add('comments.post', {
+            method : 'post',
+            route  : '/comments'
+        })
+
+        .add('comments.list', {
+            method : 'get',
+            route  : '/comments/:type/:item_id'
+        })
+
+        .add('comments.listAll', {
+            method : 'get',
+            route  : '/comments'
+        })
+
+        .add('comments.flag', {
+            method : 'post',
+            route  : '/comments/flag/:id'
+        })
+
+        .add('comments.delete.byId', {
+            method : 'delete',
+            route  : '/comments/:id'
+        })
+
+        /*
+         * Forum
+         */
+
+        .add('forum.categories.list', {
+            method : 'get',
+            route  : '/forum/categories'
+        })
+
+        .add('forum.categories.get.byId', {
+            method : 'get',
+            route  : '/forum/categories/:id'
+        })
+
+        .add('forum.categories.get.bySlug', {
+            method : 'get',
+            route  : '/forum/categories/slug/:slug'
+        })
+
+        .add('forum.topics.list', {
+            method : 'get',
+            route  : '/forum/topics'
+        })
+
+        .add('forum.topics.post', {
+            method : 'post',
+            route  : '/forum/topics'
+        })
+
+        .add('forum.topics.delete', {
+            method : 'delete',
+            route  : '/forum/topics/:id'
+        })
+
+        .add('forum.topics.get.byId', {
+            method : 'get',
+            route  : '/forum/topics/:id'
+        })
+
+        .add('forum.topics.get.bySlug', {
+            method : 'get',
+            route  : '/forum/topics/slug/:slug'
+        })
+
+        .add('forum.modt.get', {
+            method : 'get',
+            route  : '/forum/modt'
+        })
+
+        .add('forum.search', {
+            method : 'get',
+            route  : '/forum/search'
+        })
+
+        /*
+         * Leaderboards
+         */
+
+        .add('leaderboard.get', {
+            method : 'get',
+            route  : '/leaderboard'
+        })
+
+        /*
+         * News
+         */
+
+        .add('news.list', {
+            method : 'get',
+            route  : '/news'
+        })
+
+        .add('news.get.byId', {
+            method : 'get',
+            route  : '/news/:id'
+        })
+
+        .add('news.get.bySlug', {
+            method : 'get',
+            route  : '/news/slug/:slug'
+        })
+
+        /*
+         * Notifications
+         */
+
+        .add('notifications.get', {
+            method : 'get',
+            route  : '/notifications'
+        })
+
+        .add('notifications.read', {
+            method : 'post',
+            route  : '/notifications/read/:id'
+        })
+
+        .add('notifications.readAll', {
+            method : 'post',
+            route  : '/notifications/read'
+        })
+
+        /*
+         * Projects
+         */
+
+        .add('projects.post', {
+            method : 'post',
+            route  : '/projects'
+        })
+
+        .add('projects.list', {
+            method : 'get',
+            route  : '/projects'
+        })
+
+        .add('projects.get.byId', {
+            method : 'get',
+            route  : '/projects/:id'
+        })
+
+        .add('projects.get.bySlug', {
+            method : 'get',
+            route  : '/projects/slug/:slug'
+        })
+
+        .add('projects.get.categories', {
+            method : 'get',
+            route  : '/projects/categories'
+        })
+
+        .add('projects.update', {
+            method : 'put',
+            route  : '/projects/:id'
+        })
+
+        .add('projects.delete', {
+            method : 'delete',
+            route  : '/projects/:id'
+        })
+
+        .add('projects.like', {
+            method : 'post',
+            route  : '/projects/:id/like'
+        })
+
+        .add('projects.unlike', {
+            method : 'delete',
+            route  : '/projects/:id/like'
+        })
+
+        /*
+         * Share
+         */
+
+        .add('share.list', {
+            method : 'get',
+            route  : '/share'
+        })
+
+        .add('share.get.byId', {
+            method : 'get',
+            route  : '/share/:id'
+        })
+
+        .add('share.get.bySlug', {
+            method : 'get',
+            route  : '/share/slug/:slug'
+        })
+
+        .add('share.delete.byId', {
+            method : 'delete',
+            route  : '/share/:id'
+        })
+
+        .add('share.like', {
+            method : 'post',
+            route  : '/share/:id/like'
+        })
+
+        .add('share.unlike', {
+            method : 'delete',
+            route  : '/share/:id/like'
+        })
+
+        .add('share.flag', {
+            method : 'post',
+            route  : '/share/flag/:id'
+        })
+
+        .add('share.count', {
+            method : 'get',
+            route  : '/share/count'
+        })
+
+        .add('share.post', {
+            method : 'post',
+            route  : '/share/:app'
+        })
+
+        /*
+         * Stats
+         */
+
+        .add('stats.get.activity', {
+            method : 'get',
+            route  : 'stats/activity'
+        })
+
+        /*
+         * Sync
+         */
+
+        .add('sync.settings.get', {
+            method : 'get',
+            route  : 'sync/settings'
+        })
+
+        .add('sync.settings.update', {
+            method : 'put',
+            route  : 'sync/settings'
+        })
+
+        /*
+         * Users
+         */
+
+        .add('users.post', {
+            method : 'post',
+            route  : '/users'
+        })
+
+        .add('users.get.byId', {
+            method : 'get',
+            route  : '/users/:id'
+        })
+
+        .add('users.get.byUsername', {
+            method : 'get',
+            route  : '/users/username/:username'
+        })
+
+        .add('users.get.following', {
+            method : 'get',
+            route  : '/users/:id/following'
+        })
+
+        .add('users.get.followers', {
+            method : 'get',
+            route  : '/users/:id/followers'
+        })
+
+        .add('users.profile.update', {
+            method : 'put',
+            route  : '/users/profile'
+        })
+
+        .add('users.list', {
+            method : 'get',
+            route  : '/users'
+        })
+
+        .add('users.follow', {
+            method : 'post',
+            route  : '/users/follow/:id'
+        })
+
+        .add('users.unfollow', {
+            method : 'delete',
+            route  : '/users/follow/:id'
+        })
+
+        .add('users.delete', {
+            method : 'delete',
+            route  : '/users'
+        });
 };
-},{"../config":"/Users/tanc/projects/kano-world-sdk/lib/config.js"}],"/Users/tanc/projects/kano-world-sdk/lib/index.js":[function(require,module,exports){
-var auth = require('./core/auth'),
-    urlUtil = require('./util/url'),
-    appStorage = require('./core/appStorage'),
-    apiService = require('./core/kano-api');
+},{"../config":1,"./service-middleware":6,"api-service":9}],6:[function(require,module,exports){
+module.exports = function (config) {
+	var middleware =  function (req, next) {
+	    req.setRequestHeader('Accept', 'application/vnd.kano+json; version=' + config.apiVersion);
 
-function init(callback) {
-    var token = urlUtil.getQueryParam('token'),
-        loginError = urlUtil.getQueryParam('loginError');
+	    if (localStorage.KW_TOKEN) {
+	        req.setRequestHeader('Authorization', localStorage.KW_TOKEN);
+	    }
 
-    if (token) {
-        auth.setToken(token);
-        window.location.search = '';
-    } else {
-        token = auth.getToken();
-    }
+	    next();
+	};
 
-    if (token) {
+	return middleware;
+};
+},{}],7:[function(require,module,exports){
+var urlUtil = require('./util/url');
 
-        auth.initSession(callback);
+var sdk, auth, apiService, appStorage;
 
-    } else if (loginError) {
-        callback(new Error(loginError));
-    }
+sdk = function (config) {
+    auth = require('./core/auth')(config);
+    apiService = require('./core/kano-api')(config);
+    appStorage = require('./core/appStorage')(config);
 
-    bindEvents();
-}
+    function bindEvents() {
+        document.addEventListener('click', function (e) {
+            if (e.target.hasAttribute('data-kano-world-login')) {
+                auth.login();
+            } else if (e.target.hasAttribute('data-kano-world-logout')) {
+                auth.logout();
+            }
+        });
+    };
 
-function bindEvents() {
-    document.addEventListener('click', function (e) {
-        if (e.target.hasAttribute('data-kano-world-login')) {
-            auth.login();
-        } else if (e.target.hasAttribute('data-kano-world-logout')) {
-            auth.logout();
+    function init(callback) {
+        var token = urlUtil.getQueryParam('token'),
+            loginError = urlUtil.getQueryParam('loginError');
+
+        if (token) {
+            auth.setToken(token);
+            window.location.search = '';
+        } else {
+            token = auth.getToken();
         }
-    });
-}
 
-var sdk = {
-    auth       : auth,
-    init       : init,
-    appStorage : appStorage,
-    api        : apiService
+        if (token) {
+
+            auth.initSession(callback);
+
+        } else if (loginError) {
+            callback(new Error(loginError), null);
+        } else {
+            callback(null, null);
+        }
+
+        bindEvents();
+    }
+
+    return {
+        auth       : auth,
+        appStorage : appStorage,
+        api        : apiService,
+        init       : init
+    };
 };
+    
 
 if (module) {
     module.exports = sdk;
@@ -609,7 +625,7 @@ if (module) {
 if (window) {
     window.KW_SDK = sdk;
 }
-},{"./core/appStorage":"/Users/tanc/projects/kano-world-sdk/lib/core/appStorage.js","./core/auth":"/Users/tanc/projects/kano-world-sdk/lib/core/auth.js","./core/kano-api":"/Users/tanc/projects/kano-world-sdk/lib/core/kano-api.js","./util/url":"/Users/tanc/projects/kano-world-sdk/lib/util/url.js"}],"/Users/tanc/projects/kano-world-sdk/lib/util/url.js":[function(require,module,exports){
+},{"./core/appStorage":2,"./core/auth":3,"./core/kano-api":5,"./util/url":8}],8:[function(require,module,exports){
 function getQueryParam(name) {
     name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
 
@@ -622,7 +638,7 @@ function getQueryParam(name) {
 module.exports = {
     getQueryParam : getQueryParam
 };
-},{}],"/Users/tanc/projects/kano-world-sdk/node_modules/api-service/lib/Service.js":[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 var Resource = require('api-resource'),
     util = require('./util'),
     EventEmitter = require('eventemitter2').EventEmitter2;
@@ -700,7 +716,7 @@ Service.prototype.use = function (fn) {
 };
 
 module.exports = Service;
-},{"./util":"/Users/tanc/projects/kano-world-sdk/node_modules/api-service/lib/util.js","api-resource":"/Users/tanc/projects/kano-world-sdk/node_modules/api-service/node_modules/api-resource/index.js","eventemitter2":"/Users/tanc/projects/kano-world-sdk/node_modules/api-service/node_modules/eventemitter2/lib/eventemitter2.js"}],"/Users/tanc/projects/kano-world-sdk/node_modules/api-service/lib/util.js":[function(require,module,exports){
+},{"./util":10,"api-resource":11,"eventemitter2":20}],10:[function(require,module,exports){
 // Attach value to an object at given namespace
 
 exports.attachToNamespace = function (root, ns, val) {
@@ -719,26 +735,26 @@ exports.attachToNamespace = function (root, ns, val) {
     // Attach value to created namespace
     cur[key] = val;
 };
-},{}],"/Users/tanc/projects/kano-world-sdk/node_modules/api-service/node_modules/api-resource/index.js":[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 if (typeof window !== 'undefined') {
     module.exports = require('./lib/Resource-browser');
 } else {
     module.exports = require('./lib/Resource-server');
 }
-},{"./lib/Resource-browser":"/Users/tanc/projects/kano-world-sdk/node_modules/api-service/node_modules/api-resource/lib/Resource-browser.js","./lib/Resource-server":"/Users/tanc/projects/kano-world-sdk/node_modules/api-service/node_modules/api-resource/lib/Resource-server.js"}],"/Users/tanc/projects/kano-world-sdk/node_modules/api-service/node_modules/api-resource/lib/Resource-browser.js":[function(require,module,exports){
+},{"./lib/Resource-browser":12,"./lib/Resource-server":13}],12:[function(require,module,exports){
 var Resource = require('./Resource');
 
 Resource.prototype._Request = XMLHttpRequest;
 
 module.exports = Resource;
-},{"./Resource":"/Users/tanc/projects/kano-world-sdk/node_modules/api-service/node_modules/api-resource/lib/Resource.js"}],"/Users/tanc/projects/kano-world-sdk/node_modules/api-service/node_modules/api-resource/lib/Resource-server.js":[function(require,module,exports){
+},{"./Resource":14}],13:[function(require,module,exports){
 var Resource = require('./Resource'),
     request = require('xmlhttprequest').XMLHttpRequest;
 
 Resource.prototype._Request = request;
 
 module.exports = Resource;
-},{"./Resource":"/Users/tanc/projects/kano-world-sdk/node_modules/api-service/node_modules/api-resource/lib/Resource.js","xmlhttprequest":"/Users/tanc/projects/kano-world-sdk/node_modules/api-service/node_modules/api-resource/node_modules/xmlhttprequest/lib/XMLHttpRequest.js"}],"/Users/tanc/projects/kano-world-sdk/node_modules/api-service/node_modules/api-resource/lib/Resource.js":[function(require,module,exports){
+},{"./Resource":14,"xmlhttprequest":19}],14:[function(require,module,exports){
 var Q = require('q'),
     qs = require('qs'),
     util = require('./util'),
@@ -841,11 +857,11 @@ Resource.prototype._sendReq = function (req, payload, deferred) {
         self.emit('error', err);
     };
 
-    req.send(payload);
+    req.send(this.method === 'get' ? null : payload);
 };
 
 module.exports = Resource;
-},{"./util":"/Users/tanc/projects/kano-world-sdk/node_modules/api-service/node_modules/api-resource/lib/util.js","async":"/Users/tanc/projects/kano-world-sdk/node_modules/api-service/node_modules/api-resource/node_modules/async/lib/async.js","eventemitter2":"/Users/tanc/projects/kano-world-sdk/node_modules/api-service/node_modules/eventemitter2/lib/eventemitter2.js","q":"/Users/tanc/projects/kano-world-sdk/node_modules/api-service/node_modules/api-resource/node_modules/q/q.js","qs":"/Users/tanc/projects/kano-world-sdk/node_modules/api-service/node_modules/api-resource/node_modules/qs/index.js"}],"/Users/tanc/projects/kano-world-sdk/node_modules/api-service/node_modules/api-resource/lib/util.js":[function(require,module,exports){
+},{"./util":15,"async":16,"eventemitter2":20,"q":17,"qs":18}],15:[function(require,module,exports){
 // If given value is an object return as stringified JSON
 
 exports.stringifyIfObject = function (val) {
@@ -859,7 +875,7 @@ exports.formRequestPayload = function (req, data) {
     if (data.files) {
         var formData = new FormData();
 
-        addMultiformData(formData, data);
+        addMultipartData(formData, data);
         addFiles(formData, data.files);
 
         return formData;
@@ -891,7 +907,7 @@ exports.compileRoute = function (route, params) {
 
 // Helper used by `formRequestPayload` to append data to FormData instance
 
-function addMultiformData (formData, data) {
+function addMultipartData (formData, data) {
     var key, arr, i;
 
     for (key in data) {
@@ -912,25 +928,27 @@ function addMultiformData (formData, data) {
 // Helper used by `formRequestPayload` to append files to a FormData instance
 
 function addFiles (formData, files) {
-    var file, arr, key, i;
+    var file, arr, key, i, filename;
 
     for (key in files) {
         if (files.hasOwnProperty(key)) {
 
             if (files[key] instanceof Array) {
                 arr = files[key];
+                filename = arr[i].filename || null;
 
                 for (i = 0; i < arr.length; i += 1) {
                     formData.append(key + '[' + i + ']', arr[i]);
                 }
             } else {
                 file = files[key];
-                formData.append(key, file);
+                filename = files[key].filename || null;
+                formData.append(key, file, filename);
             }
         }
     }
 }
-},{}],"/Users/tanc/projects/kano-world-sdk/node_modules/api-service/node_modules/api-resource/node_modules/async/lib/async.js":[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 (function (process){
 /*!
  * async
@@ -976,9 +994,6 @@ function addFiles (formData, files) {
     };
 
     var _each = function (arr, iterator) {
-        if (arr.forEach) {
-            return arr.forEach(iterator);
-        }
         for (var i = 0; i < arr.length; i += 1) {
             iterator(arr[i], i, arr);
         }
@@ -1755,23 +1770,26 @@ function addFiles (formData, files) {
             pause: function () {
                 if (q.paused === true) { return; }
                 q.paused = true;
-                q.process();
             },
             resume: function () {
                 if (q.paused === false) { return; }
                 q.paused = false;
-                q.process();
+                // Need to call q.process once per concurrent
+                // worker to preserve full concurrency after pause
+                for (var w = 1; w <= q.concurrency; w++) {
+                    async.setImmediate(q.process);
+                }
             }
         };
         return q;
     };
-    
+
     async.priorityQueue = function (worker, concurrency) {
-        
+
         function _compareTasks(a, b){
           return a.priority - b.priority;
         };
-        
+
         function _binarySearch(sequence, item, compare) {
           var beg = -1,
               end = sequence.length - 1;
@@ -1785,7 +1803,7 @@ function addFiles (formData, files) {
           }
           return beg;
         }
-        
+
         function _insert(q, data, priority, callback) {
           if (!q.started){
             q.started = true;
@@ -1807,7 +1825,7 @@ function addFiles (formData, files) {
                   priority: priority,
                   callback: typeof callback === 'function' ? callback : null
               };
-              
+
               q.tasks.splice(_binarySearch(q.tasks, item, _compareTasks) + 1, 0, item);
 
               if (q.saturated && q.tasks.length === q.concurrency) {
@@ -1816,15 +1834,15 @@ function addFiles (formData, files) {
               async.setImmediate(q.process);
           });
         }
-        
+
         // Start with a normal queue
         var q = async.queue(worker, concurrency);
-        
+
         // Override push to accept second parameter representing priority
         q.push = function (data, priority, callback) {
           _insert(q, data, priority, callback);
         };
-        
+
         // Remove unshift function
         delete q.unshift;
 
@@ -2057,7 +2075,7 @@ function addFiles (formData, files) {
 }());
 
 }).call(this,require('_process'))
-},{"_process":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/process/browser.js"}],"/Users/tanc/projects/kano-world-sdk/node_modules/api-service/node_modules/api-resource/node_modules/q/q.js":[function(require,module,exports){
+},{"_process":35}],17:[function(require,module,exports){
 (function (process){
 // vim:ts=4:sts=4:sw=4:
 /*!
@@ -2116,11 +2134,25 @@ function addFiles (formData, files) {
         }
 
     // <script>
-    } else if (typeof self !== "undefined") {
-        self.Q = definition();
+    } else if (typeof window !== "undefined" || typeof self !== "undefined") {
+        // Prefer window over self for add-on scripts. Use self for
+        // non-windowed contexts.
+        var global = typeof window !== "undefined" ? window : self;
+
+        // Get the `window` object, save the previous Q global
+        // and initialize Q as a global.
+        var previousQ = global.Q;
+        global.Q = definition();
+
+        // Add a noConflict function so Q can be removed from the
+        // global namespace.
+        global.Q.noConflict = function () {
+            global.Q = previousQ;
+            return this;
+        };
 
     } else {
-        throw new Error("This environment was not anticiapted by Q. Please file a bug.");
+        throw new Error("This environment was not anticipated by Q. Please file a bug.");
     }
 
 })(function () {
@@ -2152,57 +2184,67 @@ var nextTick =(function () {
     var flushing = false;
     var requestTick = void 0;
     var isNodeJS = false;
+    // queue for late tasks, used by unhandled rejection tracking
+    var laterQueue = [];
 
     function flush() {
         /* jshint loopfunc: true */
+        var task, domain;
 
         while (head.next) {
             head = head.next;
-            var task = head.task;
+            task = head.task;
             head.task = void 0;
-            var domain = head.domain;
+            domain = head.domain;
 
             if (domain) {
                 head.domain = void 0;
                 domain.enter();
             }
+            runSingle(task, domain);
 
-            try {
-                task();
+        }
+        while (laterQueue.length) {
+            task = laterQueue.pop();
+            runSingle(task);
+        }
+        flushing = false;
+    }
+    // runs a single function in the async queue
+    function runSingle(task, domain) {
+        try {
+            task();
 
-            } catch (e) {
-                if (isNodeJS) {
-                    // In node, uncaught exceptions are considered fatal errors.
-                    // Re-throw them synchronously to interrupt flushing!
+        } catch (e) {
+            if (isNodeJS) {
+                // In node, uncaught exceptions are considered fatal errors.
+                // Re-throw them synchronously to interrupt flushing!
 
-                    // Ensure continuation if the uncaught exception is suppressed
-                    // listening "uncaughtException" events (as domains does).
-                    // Continue in next event to avoid tick recursion.
-                    if (domain) {
-                        domain.exit();
-                    }
-                    setTimeout(flush, 0);
-                    if (domain) {
-                        domain.enter();
-                    }
-
-                    throw e;
-
-                } else {
-                    // In browsers, uncaught exceptions are not fatal.
-                    // Re-throw them asynchronously to avoid slow-downs.
-                    setTimeout(function() {
-                       throw e;
-                    }, 0);
+                // Ensure continuation if the uncaught exception is suppressed
+                // listening "uncaughtException" events (as domains does).
+                // Continue in next event to avoid tick recursion.
+                if (domain) {
+                    domain.exit();
                 }
-            }
+                setTimeout(flush, 0);
+                if (domain) {
+                    domain.enter();
+                }
 
-            if (domain) {
-                domain.exit();
+                throw e;
+
+            } else {
+                // In browsers, uncaught exceptions are not fatal.
+                // Re-throw them asynchronously to avoid slow-downs.
+                setTimeout(function () {
+                    throw e;
+                }, 0);
             }
         }
 
-        flushing = false;
+        if (domain) {
+            domain.exit();
+        }
     }
 
     nextTick = function (task) {
@@ -2218,9 +2260,16 @@ var nextTick =(function () {
         }
     };
 
-    if (typeof process !== "undefined" && process.nextTick) {
-        // Node.js before 0.9. Note that some fake-Node environments, like the
-        // Mocha test runner, introduce a `process` global without a `nextTick`.
+    if (typeof process === "object" &&
+        process.toString() === "[object process]" && process.nextTick) {
+        // Ensure Q is in a real Node environment, with a `process.nextTick`.
+        // To see through fake Node environments:
+        // * Mocha test runner - exposes a `process` global without a `nextTick`
+        // * Browserify - exposes a `process.nexTick` function that uses
+        //   `setTimeout`. In this case `setImmediate` is preferred because
+        //    it is faster. Browserify's `process.toString()` yields
+        //   "[object Object]", while in a real Node environment
+        //   `process.nextTick()` yields "[object process]".
         isNodeJS = true;
 
         requestTick = function () {
@@ -2264,7 +2313,16 @@ var nextTick =(function () {
             setTimeout(flush, 0);
         };
     }
-
+    // runs a task after all other tasks have been run
+    // this is useful for unhandled rejection tracking that needs to happen
+    // after all `then`d tasks have been run.
+    nextTick.runAfter = function (task) {
+        laterQueue.push(task);
+        if (!flushing) {
+            flushing = true;
+            requestTick();
+        }
+    };
     return nextTick;
 })();
 
@@ -2758,9 +2816,9 @@ Promise.prototype.join = function (that) {
  */
 Q.race = race;
 function race(answerPs) {
-    return promise(function(resolve, reject) {
+    return promise(function (resolve, reject) {
         // Switch to this once we can assume at least ES5
-        // answerPs.forEach(function(answerP) {
+        // answerPs.forEach(function (answerP) {
         //     Q(answerP).then(resolve, reject);
         // });
         // Use this in the meantime
@@ -3058,6 +3116,7 @@ Promise.prototype.isRejected = function () {
 // shimmed environments, this would naturally be a `Set`.
 var unhandledReasons = [];
 var unhandledRejections = [];
+var reportedUnhandledRejections = [];
 var trackUnhandledRejections = true;
 
 function resetUnhandledRejections() {
@@ -3072,6 +3131,14 @@ function resetUnhandledRejections() {
 function trackRejection(promise, reason) {
     if (!trackUnhandledRejections) {
         return;
+    }
+    if (typeof process === "object" && typeof process.emit === "function") {
+        Q.nextTick.runAfter(function () {
+            if (array_indexOf(unhandledRejections, promise) !== -1) {
+                process.emit("unhandledRejection", reason, promise);
+                reportedUnhandledRejections.push(promise);
+            }
+        });
     }
 
     unhandledRejections.push(promise);
@@ -3089,6 +3156,15 @@ function untrackRejection(promise) {
 
     var at = array_indexOf(unhandledRejections, promise);
     if (at !== -1) {
+        if (typeof process === "object" && typeof process.emit === "function") {
+            Q.nextTick.runAfter(function () {
+                var atReport = array_indexOf(reportedUnhandledRejections, promise);
+                if (atReport !== -1) {
+                    process.emit("rejectionHandled", unhandledReasons[at], promise);
+                    reportedUnhandledRejections.splice(atReport, 1);
+                }
+            });
+        }
         unhandledRejections.splice(at, 1);
         unhandledReasons.splice(at, 1);
     }
@@ -3563,7 +3639,7 @@ Promise.prototype.keys = function () {
 Q.all = all;
 function all(promises) {
     return when(promises, function (promises) {
-        var countDown = 0;
+        var pendingCount = 0;
         var deferred = defer();
         array_reduce(promises, function (undefined, promise, index) {
             var snapshot;
@@ -3573,12 +3649,12 @@ function all(promises) {
             ) {
                 promises[index] = snapshot.value;
             } else {
-                ++countDown;
+                ++pendingCount;
                 when(
                     promise,
                     function (value) {
                         promises[index] = value;
-                        if (--countDown === 0) {
+                        if (--pendingCount === 0) {
                             deferred.resolve(promises);
                         }
                     },
@@ -3589,7 +3665,7 @@ function all(promises) {
                 );
             }
         }, void 0);
-        if (countDown === 0) {
+        if (pendingCount === 0) {
             deferred.resolve(promises);
         }
         return deferred.promise;
@@ -3598,6 +3674,55 @@ function all(promises) {
 
 Promise.prototype.all = function () {
     return all(this);
+};
+
+/**
+ * Returns the first resolved promise of an array. Prior rejected promises are
+ * ignored.  Rejects only if all promises are rejected.
+ * @param {Array*} an array containing values or promises for values
+ * @returns a promise fulfilled with the value of the first resolved promise,
+ * or a rejected promise if all promises are rejected.
+ */
+Q.any = any;
+
+function any(promises) {
+    if (promises.length === 0) {
+        return Q.resolve();
+    }
+
+    var deferred = Q.defer();
+    var pendingCount = 0;
+    array_reduce(promises, function (prev, current, index) {
+        var promise = promises[index];
+
+        pendingCount++;
+
+        when(promise, onFulfilled, onRejected, onProgress);
+        function onFulfilled(result) {
+            deferred.resolve(result);
+        }
+        function onRejected() {
+            pendingCount--;
+            if (pendingCount === 0) {
+                deferred.reject(new Error(
+                    "Can't get fulfillment value from any promise, all " +
+                    "promises were rejected."
+                ));
+            }
+        }
+        function onProgress(progress) {
+            deferred.notify({
+                index: index,
+                value: progress
+            });
+        }
+    }, undefined);
+
+    return deferred.promise;
+}
+
+Promise.prototype.any = function () {
+    return any(this);
 };
 
 /**
@@ -3990,6 +4115,10 @@ Promise.prototype.nodeify = function (nodeback) {
     }
 };
 
+Q.noConflict = function() {
+    throw new Error("Q.noConflict only works when Q is used as a global");
+};
+
 // All code before this point will be filtered from stack traces.
 var qEndingLine = captureLine();
 
@@ -3998,7 +4127,7 @@ return Q;
 });
 
 }).call(this,require('_process'))
-},{"_process":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/process/browser.js"}],"/Users/tanc/projects/kano-world-sdk/node_modules/api-service/node_modules/api-resource/node_modules/qs/index.js":[function(require,module,exports){
+},{"_process":35}],18:[function(require,module,exports){
 /**
  * Object#toString() ref for stringify().
  */
@@ -4366,7 +4495,7 @@ function decode(str) {
   }
 }
 
-},{}],"/Users/tanc/projects/kano-world-sdk/node_modules/api-service/node_modules/api-resource/node_modules/xmlhttprequest/lib/XMLHttpRequest.js":[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 (function (process,Buffer){
 /**
  * Wrapper for built-in http.js to emulate the browser XMLHttpRequest object.
@@ -4381,17 +4510,19 @@ function decode(str) {
  * @license MIT
  */
 
-var Url = require("url")
-  , spawn = require("child_process").spawn
-  , fs = require('fs');
+var Url = require("url");
+var spawn = require("child_process").spawn;
+var fs = require("fs");
 
 exports.XMLHttpRequest = function() {
+  "use strict";
+
   /**
    * Private variables
    */
   var self = this;
-  var http = require('http');
-  var https = require('https');
+  var http = require("http");
+  var https = require("https");
 
   // Holds http.js objects
   var request;
@@ -4553,11 +4684,11 @@ exports.XMLHttpRequest = function() {
    * @param string value Header value
    */
   this.setRequestHeader = function(header, value) {
-    if (this.readyState != this.OPENED) {
+    if (this.readyState !== this.OPENED) {
       throw "INVALID_STATE_ERR: setRequestHeader can only be called when state is OPEN";
     }
     if (!isAllowedHttpHeader(header)) {
-      console.warn('Refused to set unsafe header "' + header + '"');
+      console.warn("Refused to set unsafe header \"" + header + "\"");
       return;
     }
     if (sendFlag) {
@@ -4575,6 +4706,8 @@ exports.XMLHttpRequest = function() {
   this.getResponseHeader = function(header) {
     if (typeof header === "string"
       && this.readyState > this.OPENED
+      && response
+      && response.headers
       && response.headers[header.toLowerCase()]
       && !errorFlag
     ) {
@@ -4625,7 +4758,7 @@ exports.XMLHttpRequest = function() {
    * @param string data Optional data to send as request body.
    */
   this.send = function(data) {
-    if (this.readyState != this.OPENED) {
+    if (this.readyState !== this.OPENED) {
       throw "INVALID_STATE_ERR: connection must be opened before send() is called";
     }
 
@@ -4638,19 +4771,19 @@ exports.XMLHttpRequest = function() {
     var host;
     // Determine the server
     switch (url.protocol) {
-      case 'https:':
+      case "https:":
         ssl = true;
         // SSL & non-SSL both need host, no break here.
-      case 'http:':
+      case "http:":
         host = url.hostname;
         break;
 
-      case 'file:':
+      case "file:":
         local = true;
         break;
 
       case undefined:
-      case '':
+      case "":
         host = "localhost";
         break;
 
@@ -4665,7 +4798,7 @@ exports.XMLHttpRequest = function() {
       }
 
       if (settings.async) {
-        fs.readFile(url.pathname, 'utf8', function(error, data) {
+        fs.readFile(url.pathname, "utf8", function(error, data) {
           if (error) {
             self.handleError(error);
           } else {
@@ -4676,7 +4809,7 @@ exports.XMLHttpRequest = function() {
         });
       } else {
         try {
-          this.responseText = fs.readFileSync(url.pathname, 'utf8');
+          this.responseText = fs.readFileSync(url.pathname, "utf8");
           this.status = 200;
           setState(self.DONE);
         } catch(e) {
@@ -4691,21 +4824,21 @@ exports.XMLHttpRequest = function() {
     // to use http://localhost:port/path
     var port = url.port || (ssl ? 443 : 80);
     // Add query string if one is used
-    var uri = url.pathname + (url.search ? url.search : '');
+    var uri = url.pathname + (url.search ? url.search : "");
 
     // Set the Host header or the server may reject the request
-    headers["Host"] = host;
+    headers.Host = host;
     if (!((ssl && port === 443) || port === 80)) {
-      headers["Host"] += ':' + url.port;
+      headers.Host += ":" + url.port;
     }
 
     // Set Basic Auth if necessary
     if (settings.user) {
-      if (typeof settings.password == "undefined") {
+      if (typeof settings.password === "undefined") {
         settings.password = "";
       }
       var authBuf = new Buffer(settings.user + ":" + settings.password);
-      headers["Authorization"] = "Basic " + authBuf.toString("base64");
+      headers.Authorization = "Basic " + authBuf.toString("base64");
     }
 
     // Set content length header
@@ -4747,13 +4880,13 @@ exports.XMLHttpRequest = function() {
       self.dispatchEvent("readystatechange");
 
       // Handler for the response
-      function responseHandler(resp) {
+      var responseHandler = function responseHandler(resp) {
         // Set response var to the response we got back
         // This is so it remains accessable outside this scope
         response = resp;
         // Check for redirect
         // @TODO Prevent looped redirects
-        if (response.statusCode === 302 || response.statusCode === 303 || response.statusCode === 307) {
+        if (response.statusCode === 301 || response.statusCode === 302 || response.statusCode === 303 || response.statusCode === 307) {
           // Change URL to the redirect location
           settings.url = response.headers.location;
           var url = Url.parse(settings.url);
@@ -4764,12 +4897,12 @@ exports.XMLHttpRequest = function() {
             hostname: url.hostname,
             port: url.port,
             path: url.path,
-            method: response.statusCode === 303 ? 'GET' : settings.method,
+            method: response.statusCode === 303 ? "GET" : settings.method,
             headers: headers
           };
 
           // Issue the new request
-          request = doRequest(newOptions, responseHandler).on('error', errorHandler);
+          request = doRequest(newOptions, responseHandler).on("error", errorHandler);
           request.end();
           // @TODO Check if an XHR event needs to be fired here
           return;
@@ -4780,7 +4913,7 @@ exports.XMLHttpRequest = function() {
         setState(self.HEADERS_RECEIVED);
         self.status = response.statusCode;
 
-        response.on('data', function(chunk) {
+        response.on("data", function(chunk) {
           // Make sure there's some data
           if (chunk) {
             self.responseText += chunk;
@@ -4791,26 +4924,26 @@ exports.XMLHttpRequest = function() {
           }
         });
 
-        response.on('end', function() {
+        response.on("end", function() {
           if (sendFlag) {
-            // Discard the 'end' event if the connection has been aborted
+            // Discard the end event if the connection has been aborted
             setState(self.DONE);
             sendFlag = false;
           }
         });
 
-        response.on('error', function(error) {
+        response.on("error", function(error) {
           self.handleError(error);
         });
-      }
+      };
 
       // Error handler for the request
-      function errorHandler(error) {
+      var errorHandler = function errorHandler(error) {
         self.handleError(error);
-      }
+      };
 
       // Create the request
-      request = doRequest(options, responseHandler).on('error', errorHandler);
+      request = doRequest(options, responseHandler).on("error", errorHandler);
 
       // Node 0.4 and later won't accept empty data. Make sure it's needed.
       if (data) {
@@ -4836,38 +4969,36 @@ exports.XMLHttpRequest = function() {
         + "  responseText += chunk;"
         + "});"
         + "response.on('end', function() {"
-        + "fs.writeFileSync('" + contentFile + "', 'NODE-XMLHTTPREQUEST-STATUS:' + response.statusCode + ',' + responseText, 'utf8');"
+        + "fs.writeFileSync('" + contentFile + "', JSON.stringify({err: null, data: {statusCode: response.statusCode, headers: response.headers, text: responseText}}), 'utf8');"
         + "fs.unlinkSync('" + syncFile + "');"
         + "});"
         + "response.on('error', function(error) {"
-        + "fs.writeFileSync('" + contentFile + "', 'NODE-XMLHTTPREQUEST-ERROR:' + JSON.stringify(error), 'utf8');"
+        + "fs.writeFileSync('" + contentFile + "', JSON.stringify({err: error}), 'utf8');"
         + "fs.unlinkSync('" + syncFile + "');"
         + "});"
         + "}).on('error', function(error) {"
-        + "fs.writeFileSync('" + contentFile + "', 'NODE-XMLHTTPREQUEST-ERROR:' + JSON.stringify(error), 'utf8');"
+        + "fs.writeFileSync('" + contentFile + "', JSON.stringify({err: error}), 'utf8');"
         + "fs.unlinkSync('" + syncFile + "');"
         + "});"
-        + (data ? "req.write('" + data.replace(/'/g, "\\'") + "');":"")
+        + (data ? "req.write('" + JSON.stringify(data).slice(1,-1).replace(/'/g, "\\'") + "');":"")
         + "req.end();";
       // Start the other Node Process, executing this string
       var syncProc = spawn(process.argv[0], ["-e", execString]);
-      var statusText;
       while(fs.existsSync(syncFile)) {
         // Wait while the sync file is empty
       }
-      self.responseText = fs.readFileSync(contentFile, 'utf8');
+      var resp = JSON.parse(fs.readFileSync(contentFile, 'utf8'));
       // Kill the child process once the file has data
       syncProc.stdin.end();
       // Remove the temporary file
       fs.unlinkSync(contentFile);
-      if (self.responseText.match(/^NODE-XMLHTTPREQUEST-ERROR:/)) {
-        // If the file returned an error, handle it
-        var errorObj = self.responseText.replace(/^NODE-XMLHTTPREQUEST-ERROR:/, "");
-        self.handleError(errorObj);
+
+      if (resp.err) {
+        self.handleError(resp.err);
       } else {
-        // If the file returned okay, parse its data and move to the DONE state
-        self.status = self.responseText.replace(/^NODE-XMLHTTPREQUEST-STATUS:([0-9]*),.*/, "$1");
-        self.responseText = self.responseText.replace(/^NODE-XMLHTTPREQUEST-STATUS:[0-9]*,(.*)/, "$1");
+        response = resp.data;
+        self.status = resp.data.statusCode;
+        self.responseText = resp.data.text;
         setState(self.DONE);
       }
     }
@@ -4952,7 +5083,7 @@ exports.XMLHttpRequest = function() {
    * @param int state New state
    */
   var setState = function(state) {
-    if (self.readyState !== state) {
+    if (state == self.LOADING || self.readyState !== state) {
       self.readyState = state;
 
       if (settings.async || self.readyState < self.OPENED || self.readyState === self.DONE) {
@@ -4969,7 +5100,7 @@ exports.XMLHttpRequest = function() {
 };
 
 }).call(this,require('_process'),require("buffer").Buffer)
-},{"_process":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/process/browser.js","buffer":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/buffer/index.js","child_process":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/lib/_empty.js","fs":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/lib/_empty.js","http":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/http-browserify/index.js","https":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/https-browserify/index.js","url":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/url/url.js"}],"/Users/tanc/projects/kano-world-sdk/node_modules/api-service/node_modules/eventemitter2/lib/eventemitter2.js":[function(require,module,exports){
+},{"_process":35,"buffer":23,"child_process":21,"fs":21,"http":28,"https":32,"url":53}],20:[function(require,module,exports){
 /*!
  * EventEmitter2
  * https://github.com/hij1nx/EventEmitter2
@@ -5544,9 +5675,11 @@ exports.XMLHttpRequest = function() {
   }
 }();
 
-},{}],"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/lib/_empty.js":[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 
-},{}],"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/buffer/index.js":[function(require,module,exports){
+},{}],22:[function(require,module,exports){
+module.exports=require(21)
+},{"/Users/ladiadenusi/source/kano/kano-world-js-sdk/node_modules/browserify/lib/_empty.js":21}],23:[function(require,module,exports){
 /*!
  * The buffer module from node.js, for the browser.
  *
@@ -5898,7 +6031,7 @@ function base64Write (buf, string, offset, length) {
 }
 
 function utf16leWrite (buf, string, offset, length) {
-  var charsWritten = blitBuffer(utf16leToBytes(string), buf, offset, length)
+  var charsWritten = blitBuffer(utf16leToBytes(string), buf, offset, length, 2)
   return charsWritten
 }
 
@@ -6582,7 +6715,8 @@ function base64ToBytes (str) {
   return base64.toByteArray(str)
 }
 
-function blitBuffer (src, dst, offset, length) {
+function blitBuffer (src, dst, offset, length, unitSize) {
+  if (unitSize) length -= length % unitSize;
   for (var i = 0; i < length; i++) {
     if ((i + offset >= dst.length) || (i >= src.length))
       break
@@ -6599,7 +6733,7 @@ function decodeUtf8Char (str) {
   }
 }
 
-},{"base64-js":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/buffer/node_modules/base64-js/lib/b64.js","ieee754":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/buffer/node_modules/ieee754/index.js","is-array":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/buffer/node_modules/is-array/index.js"}],"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/buffer/node_modules/base64-js/lib/b64.js":[function(require,module,exports){
+},{"base64-js":24,"ieee754":25,"is-array":26}],24:[function(require,module,exports){
 var lookup = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 
 ;(function (exports) {
@@ -6721,93 +6855,93 @@ var lookup = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 	exports.fromByteArray = uint8ToBase64
 }(typeof exports === 'undefined' ? (this.base64js = {}) : exports))
 
-},{}],"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/buffer/node_modules/ieee754/index.js":[function(require,module,exports){
-exports.read = function(buffer, offset, isLE, mLen, nBytes) {
-  var e, m,
-      eLen = nBytes * 8 - mLen - 1,
-      eMax = (1 << eLen) - 1,
-      eBias = eMax >> 1,
-      nBits = -7,
-      i = isLE ? (nBytes - 1) : 0,
-      d = isLE ? -1 : 1,
-      s = buffer[offset + i];
+},{}],25:[function(require,module,exports){
+exports.read = function (buffer, offset, isLE, mLen, nBytes) {
+  var e, m
+  var eLen = nBytes * 8 - mLen - 1
+  var eMax = (1 << eLen) - 1
+  var eBias = eMax >> 1
+  var nBits = -7
+  var i = isLE ? (nBytes - 1) : 0
+  var d = isLE ? -1 : 1
+  var s = buffer[offset + i]
 
-  i += d;
+  i += d
 
-  e = s & ((1 << (-nBits)) - 1);
-  s >>= (-nBits);
-  nBits += eLen;
-  for (; nBits > 0; e = e * 256 + buffer[offset + i], i += d, nBits -= 8);
+  e = s & ((1 << (-nBits)) - 1)
+  s >>= (-nBits)
+  nBits += eLen
+  for (; nBits > 0; e = e * 256 + buffer[offset + i], i += d, nBits -= 8) {}
 
-  m = e & ((1 << (-nBits)) - 1);
-  e >>= (-nBits);
-  nBits += mLen;
-  for (; nBits > 0; m = m * 256 + buffer[offset + i], i += d, nBits -= 8);
+  m = e & ((1 << (-nBits)) - 1)
+  e >>= (-nBits)
+  nBits += mLen
+  for (; nBits > 0; m = m * 256 + buffer[offset + i], i += d, nBits -= 8) {}
 
   if (e === 0) {
-    e = 1 - eBias;
+    e = 1 - eBias
   } else if (e === eMax) {
-    return m ? NaN : ((s ? -1 : 1) * Infinity);
+    return m ? NaN : ((s ? -1 : 1) * Infinity)
   } else {
-    m = m + Math.pow(2, mLen);
-    e = e - eBias;
+    m = m + Math.pow(2, mLen)
+    e = e - eBias
   }
-  return (s ? -1 : 1) * m * Math.pow(2, e - mLen);
-};
+  return (s ? -1 : 1) * m * Math.pow(2, e - mLen)
+}
 
-exports.write = function(buffer, value, offset, isLE, mLen, nBytes) {
-  var e, m, c,
-      eLen = nBytes * 8 - mLen - 1,
-      eMax = (1 << eLen) - 1,
-      eBias = eMax >> 1,
-      rt = (mLen === 23 ? Math.pow(2, -24) - Math.pow(2, -77) : 0),
-      i = isLE ? 0 : (nBytes - 1),
-      d = isLE ? 1 : -1,
-      s = value < 0 || (value === 0 && 1 / value < 0) ? 1 : 0;
+exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
+  var e, m, c
+  var eLen = nBytes * 8 - mLen - 1
+  var eMax = (1 << eLen) - 1
+  var eBias = eMax >> 1
+  var rt = (mLen === 23 ? Math.pow(2, -24) - Math.pow(2, -77) : 0)
+  var i = isLE ? 0 : (nBytes - 1)
+  var d = isLE ? 1 : -1
+  var s = value < 0 || (value === 0 && 1 / value < 0) ? 1 : 0
 
-  value = Math.abs(value);
+  value = Math.abs(value)
 
   if (isNaN(value) || value === Infinity) {
-    m = isNaN(value) ? 1 : 0;
-    e = eMax;
+    m = isNaN(value) ? 1 : 0
+    e = eMax
   } else {
-    e = Math.floor(Math.log(value) / Math.LN2);
+    e = Math.floor(Math.log(value) / Math.LN2)
     if (value * (c = Math.pow(2, -e)) < 1) {
-      e--;
-      c *= 2;
+      e--
+      c *= 2
     }
     if (e + eBias >= 1) {
-      value += rt / c;
+      value += rt / c
     } else {
-      value += rt * Math.pow(2, 1 - eBias);
+      value += rt * Math.pow(2, 1 - eBias)
     }
     if (value * c >= 2) {
-      e++;
-      c /= 2;
+      e++
+      c /= 2
     }
 
     if (e + eBias >= eMax) {
-      m = 0;
-      e = eMax;
+      m = 0
+      e = eMax
     } else if (e + eBias >= 1) {
-      m = (value * c - 1) * Math.pow(2, mLen);
-      e = e + eBias;
+      m = (value * c - 1) * Math.pow(2, mLen)
+      e = e + eBias
     } else {
-      m = value * Math.pow(2, eBias - 1) * Math.pow(2, mLen);
-      e = 0;
+      m = value * Math.pow(2, eBias - 1) * Math.pow(2, mLen)
+      e = 0
     }
   }
 
-  for (; mLen >= 8; buffer[offset + i] = m & 0xff, i += d, m /= 256, mLen -= 8);
+  for (; mLen >= 8; buffer[offset + i] = m & 0xff, i += d, m /= 256, mLen -= 8) {}
 
-  e = (e << mLen) | m;
-  eLen += mLen;
-  for (; eLen > 0; buffer[offset + i] = e & 0xff, i += d, e /= 256, eLen -= 8);
+  e = (e << mLen) | m
+  eLen += mLen
+  for (; eLen > 0; buffer[offset + i] = e & 0xff, i += d, e /= 256, eLen -= 8) {}
 
-  buffer[offset + i - d] |= s * 128;
-};
+  buffer[offset + i - d] |= s * 128
+}
 
-},{}],"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/buffer/node_modules/is-array/index.js":[function(require,module,exports){
+},{}],26:[function(require,module,exports){
 
 /**
  * isArray
@@ -6842,7 +6976,7 @@ module.exports = isArray || function (val) {
   return !! val && '[object Array]' == str.call(val);
 };
 
-},{}],"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/events/events.js":[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -7145,7 +7279,7 @@ function isUndefined(arg) {
   return arg === void 0;
 }
 
-},{}],"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/http-browserify/index.js":[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 var http = module.exports;
 var EventEmitter = require('events').EventEmitter;
 var Request = require('./lib/request');
@@ -7291,7 +7425,7 @@ http.STATUS_CODES = {
     510 : 'Not Extended',               // RFC 2774
     511 : 'Network Authentication Required' // RFC 6585
 };
-},{"./lib/request":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/http-browserify/lib/request.js","events":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/events/events.js","url":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/url/url.js"}],"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/http-browserify/lib/request.js":[function(require,module,exports){
+},{"./lib/request":29,"events":27,"url":53}],29:[function(require,module,exports){
 var Stream = require('stream');
 var Response = require('./response');
 var Base64 = require('Base64');
@@ -7502,7 +7636,7 @@ var isXHR2Compatible = function (obj) {
     if (typeof FormData !== 'undefined' && obj instanceof FormData) return true;
 };
 
-},{"./response":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/http-browserify/lib/response.js","Base64":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/http-browserify/node_modules/Base64/base64.js","inherits":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/inherits/inherits_browser.js","stream":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/stream-browserify/index.js"}],"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/http-browserify/lib/response.js":[function(require,module,exports){
+},{"./response":30,"Base64":31,"inherits":33,"stream":51}],30:[function(require,module,exports){
 var Stream = require('stream');
 var util = require('util');
 
@@ -7624,7 +7758,7 @@ var isArray = Array.isArray || function (xs) {
     return Object.prototype.toString.call(xs) === '[object Array]';
 };
 
-},{"stream":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/stream-browserify/index.js","util":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/util/util.js"}],"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/http-browserify/node_modules/Base64/base64.js":[function(require,module,exports){
+},{"stream":51,"util":55}],31:[function(require,module,exports){
 ;(function () {
 
   var object = typeof exports != 'undefined' ? exports : this; // #8: web workers
@@ -7686,7 +7820,7 @@ var isArray = Array.isArray || function (xs) {
 
 }());
 
-},{}],"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/https-browserify/index.js":[function(require,module,exports){
+},{}],32:[function(require,module,exports){
 var http = require('http');
 
 var https = module.exports;
@@ -7698,10 +7832,11 @@ for (var key in http) {
 https.request = function (params, cb) {
     if (!params) params = {};
     params.scheme = 'https';
+    params.protocol = 'https:';
     return http.request.call(this, params, cb);
 }
 
-},{"http":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/http-browserify/index.js"}],"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/inherits/inherits_browser.js":[function(require,module,exports){
+},{"http":28}],33:[function(require,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -7726,12 +7861,12 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/isarray/index.js":[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 module.exports = Array.isArray || function (arr) {
   return Object.prototype.toString.call(arr) == '[object Array]';
 };
 
-},{}],"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/process/browser.js":[function(require,module,exports){
+},{}],35:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
@@ -7819,7 +7954,7 @@ process.chdir = function (dir) {
     throw new Error('process.chdir is not supported');
 };
 
-},{}],"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/punycode/punycode.js":[function(require,module,exports){
+},{}],36:[function(require,module,exports){
 (function (global){
 /*! http://mths.be/punycode v1.2.4 by @mathias */
 ;(function(root) {
@@ -8330,7 +8465,7 @@ process.chdir = function (dir) {
 }(this));
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/querystring-es3/decode.js":[function(require,module,exports){
+},{}],37:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -8416,7 +8551,7 @@ var isArray = Array.isArray || function (xs) {
   return Object.prototype.toString.call(xs) === '[object Array]';
 };
 
-},{}],"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/querystring-es3/encode.js":[function(require,module,exports){
+},{}],38:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -8503,16 +8638,16 @@ var objectKeys = Object.keys || function (obj) {
   return res;
 };
 
-},{}],"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/querystring-es3/index.js":[function(require,module,exports){
+},{}],39:[function(require,module,exports){
 'use strict';
 
 exports.decode = exports.parse = require('./decode');
 exports.encode = exports.stringify = require('./encode');
 
-},{"./decode":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/querystring-es3/decode.js","./encode":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/querystring-es3/encode.js"}],"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/readable-stream/duplex.js":[function(require,module,exports){
+},{"./decode":37,"./encode":38}],40:[function(require,module,exports){
 module.exports = require("./lib/_stream_duplex.js")
 
-},{"./lib/_stream_duplex.js":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/readable-stream/lib/_stream_duplex.js"}],"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/readable-stream/lib/_stream_duplex.js":[function(require,module,exports){
+},{"./lib/_stream_duplex.js":41}],41:[function(require,module,exports){
 (function (process){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -8605,7 +8740,7 @@ function forEach (xs, f) {
 }
 
 }).call(this,require('_process'))
-},{"./_stream_readable":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/readable-stream/lib/_stream_readable.js","./_stream_writable":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/readable-stream/lib/_stream_writable.js","_process":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/process/browser.js","core-util-is":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/readable-stream/node_modules/core-util-is/lib/util.js","inherits":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/inherits/inherits_browser.js"}],"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/readable-stream/lib/_stream_passthrough.js":[function(require,module,exports){
+},{"./_stream_readable":43,"./_stream_writable":45,"_process":35,"core-util-is":46,"inherits":33}],42:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -8653,7 +8788,7 @@ PassThrough.prototype._transform = function(chunk, encoding, cb) {
   cb(null, chunk);
 };
 
-},{"./_stream_transform":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/readable-stream/lib/_stream_transform.js","core-util-is":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/readable-stream/node_modules/core-util-is/lib/util.js","inherits":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/inherits/inherits_browser.js"}],"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/readable-stream/lib/_stream_readable.js":[function(require,module,exports){
+},{"./_stream_transform":44,"core-util-is":46,"inherits":33}],43:[function(require,module,exports){
 (function (process){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -8706,15 +8841,29 @@ util.inherits = require('inherits');
 
 var StringDecoder;
 
+
+/*<replacement>*/
+var debug = require('util');
+if (debug && debug.debuglog) {
+  debug = debug.debuglog('stream');
+} else {
+  debug = function () {};
+}
+/*</replacement>*/
+
+
 util.inherits(Readable, Stream);
 
 function ReadableState(options, stream) {
+  var Duplex = require('./_stream_duplex');
+
   options = options || {};
 
   // the point at which it stops calling _read() to fill the buffer
   // Note: 0 is a valid value, means "don't call _read preemptively ever"
   var hwm = options.highWaterMark;
-  this.highWaterMark = (hwm || hwm === 0) ? hwm : 16 * 1024;
+  var defaultHwm = options.objectMode ? 16 : 16 * 1024;
+  this.highWaterMark = (hwm || hwm === 0) ? hwm : defaultHwm;
 
   // cast to ints.
   this.highWaterMark = ~~this.highWaterMark;
@@ -8723,19 +8872,13 @@ function ReadableState(options, stream) {
   this.length = 0;
   this.pipes = null;
   this.pipesCount = 0;
-  this.flowing = false;
+  this.flowing = null;
   this.ended = false;
   this.endEmitted = false;
   this.reading = false;
 
-  // In streams that never have any data, and do push(null) right away,
-  // the consumer can miss the 'end' event if they do some I/O before
-  // consuming the stream.  So, we don't emit('end') until some reading
-  // happens.
-  this.calledRead = false;
-
   // a flag to be able to tell if the onwrite cb is called immediately,
-  // or on a later tick.  We set this to true at first, becuase any
+  // or on a later tick.  We set this to true at first, because any
   // actions that shouldn't happen until "later" should generally also
   // not happen before the first write call.
   this.sync = true;
@@ -8750,6 +8893,9 @@ function ReadableState(options, stream) {
   // object stream flag. Used to make read(n) ignore n and to
   // make all the buffer merging and length checks go away
   this.objectMode = !!options.objectMode;
+
+  if (stream instanceof Duplex)
+    this.objectMode = this.objectMode || !!options.readableObjectMode;
 
   // Crypto is kind of old and crusty.  Historically, its default string
   // encoding is 'binary' so we have to make this configurable.
@@ -8777,6 +8923,8 @@ function ReadableState(options, stream) {
 }
 
 function Readable(options) {
+  var Duplex = require('./_stream_duplex');
+
   if (!(this instanceof Readable))
     return new Readable(options);
 
@@ -8795,7 +8943,7 @@ function Readable(options) {
 Readable.prototype.push = function(chunk, encoding) {
   var state = this._readableState;
 
-  if (typeof chunk === 'string' && !state.objectMode) {
+  if (util.isString(chunk) && !state.objectMode) {
     encoding = encoding || state.defaultEncoding;
     if (encoding !== state.encoding) {
       chunk = new Buffer(chunk, encoding);
@@ -8816,7 +8964,7 @@ function readableAddChunk(stream, state, chunk, encoding, addToFront) {
   var er = chunkInvalid(state, chunk);
   if (er) {
     stream.emit('error', er);
-  } else if (chunk === null || chunk === undefined) {
+  } else if (util.isNullOrUndefined(chunk)) {
     state.reading = false;
     if (!state.ended)
       onEofChunk(stream, state);
@@ -8831,17 +8979,24 @@ function readableAddChunk(stream, state, chunk, encoding, addToFront) {
       if (state.decoder && !addToFront && !encoding)
         chunk = state.decoder.write(chunk);
 
-      // update the buffer info.
-      state.length += state.objectMode ? 1 : chunk.length;
-      if (addToFront) {
-        state.buffer.unshift(chunk);
-      } else {
+      if (!addToFront)
         state.reading = false;
-        state.buffer.push(chunk);
-      }
 
-      if (state.needReadable)
-        emitReadable(stream);
+      // if we want the data now, just emit it.
+      if (state.flowing && state.length === 0 && !state.sync) {
+        stream.emit('data', chunk);
+        stream.read(0);
+      } else {
+        // update the buffer info.
+        state.length += state.objectMode ? 1 : chunk.length;
+        if (addToFront)
+          state.buffer.unshift(chunk);
+        else
+          state.buffer.push(chunk);
+
+        if (state.needReadable)
+          emitReadable(stream);
+      }
 
       maybeReadMore(stream, state);
     }
@@ -8874,6 +9029,7 @@ Readable.prototype.setEncoding = function(enc) {
     StringDecoder = require('string_decoder/').StringDecoder;
   this._readableState.decoder = new StringDecoder(enc);
   this._readableState.encoding = enc;
+  return this;
 };
 
 // Don't raise the hwm > 128MB
@@ -8897,7 +9053,7 @@ function howMuchToRead(n, state) {
   if (state.objectMode)
     return n === 0 ? 0 : 1;
 
-  if (n === null || isNaN(n)) {
+  if (isNaN(n) || util.isNull(n)) {
     // only flow one buffer at a time
     if (state.flowing && state.buffer.length)
       return state.buffer[0].length;
@@ -8929,12 +9085,11 @@ function howMuchToRead(n, state) {
 
 // you can override either this method, or the async _read(n) below.
 Readable.prototype.read = function(n) {
+  debug('read', n);
   var state = this._readableState;
-  state.calledRead = true;
   var nOrig = n;
-  var ret;
 
-  if (typeof n !== 'number' || n > 0)
+  if (!util.isNumber(n) || n > 0)
     state.emittedReadable = false;
 
   // if we're doing read(0) to trigger a readable event, but we
@@ -8943,7 +9098,11 @@ Readable.prototype.read = function(n) {
   if (n === 0 &&
       state.needReadable &&
       (state.length >= state.highWaterMark || state.ended)) {
-    emitReadable(this);
+    debug('read: emitReadable', state.length, state.ended);
+    if (state.length === 0 && state.ended)
+      endReadable(this);
+    else
+      emitReadable(this);
     return null;
   }
 
@@ -8951,28 +9110,9 @@ Readable.prototype.read = function(n) {
 
   // if we've ended, and we're now clear, then finish it up.
   if (n === 0 && state.ended) {
-    ret = null;
-
-    // In cases where the decoder did not receive enough data
-    // to produce a full chunk, then immediately received an
-    // EOF, state.buffer will contain [<Buffer >, <Buffer 00 ...>].
-    // howMuchToRead will see this and coerce the amount to
-    // read to zero (because it's looking at the length of the
-    // first <Buffer > in state.buffer), and we'll end up here.
-    //
-    // This can only happen via state.decoder -- no other venue
-    // exists for pushing a zero-length chunk into state.buffer
-    // and triggering this behavior. In this case, we return our
-    // remaining data and end the stream, if appropriate.
-    if (state.length > 0 && state.decoder) {
-      ret = fromList(n, state);
-      state.length -= ret.length;
-    }
-
     if (state.length === 0)
       endReadable(this);
-
-    return ret;
+    return null;
   }
 
   // All the actual chunk generation logic needs to be
@@ -8999,17 +9139,23 @@ Readable.prototype.read = function(n) {
 
   // if we need a readable event, then we need to do some reading.
   var doRead = state.needReadable;
+  debug('need readable', doRead);
 
   // if we currently have less than the highWaterMark, then also read some
-  if (state.length - n <= state.highWaterMark)
+  if (state.length === 0 || state.length - n < state.highWaterMark) {
     doRead = true;
+    debug('length less than watermark', doRead);
+  }
 
   // however, if we've ended, then there's no point, and if we're already
   // reading, then it's unnecessary.
-  if (state.ended || state.reading)
+  if (state.ended || state.reading) {
     doRead = false;
+    debug('reading or ended', doRead);
+  }
 
   if (doRead) {
+    debug('do read');
     state.reading = true;
     state.sync = true;
     // if the length is currently zero, then we *need* a readable event.
@@ -9020,18 +9166,18 @@ Readable.prototype.read = function(n) {
     state.sync = false;
   }
 
-  // If _read called its callback synchronously, then `reading`
-  // will be false, and we need to re-evaluate how much data we
-  // can return to the user.
+  // If _read pushed data synchronously, then `reading` will be false,
+  // and we need to re-evaluate how much data we can return to the user.
   if (doRead && !state.reading)
     n = howMuchToRead(nOrig, state);
 
+  var ret;
   if (n > 0)
     ret = fromList(n, state);
   else
     ret = null;
 
-  if (ret === null) {
+  if (util.isNull(ret)) {
     state.needReadable = true;
     n = 0;
   }
@@ -9043,21 +9189,21 @@ Readable.prototype.read = function(n) {
   if (state.length === 0 && !state.ended)
     state.needReadable = true;
 
-  // If we happened to read() exactly the remaining amount in the
-  // buffer, and the EOF has been seen at this point, then make sure
-  // that we emit 'end' on the very next tick.
-  if (state.ended && !state.endEmitted && state.length === 0)
+  // If we tried to read() past the EOF, then emit end on the next tick.
+  if (nOrig !== n && state.ended && state.length === 0)
     endReadable(this);
+
+  if (!util.isNull(ret))
+    this.emit('data', ret);
 
   return ret;
 };
 
 function chunkInvalid(state, chunk) {
   var er = null;
-  if (!Buffer.isBuffer(chunk) &&
-      'string' !== typeof chunk &&
-      chunk !== null &&
-      chunk !== undefined &&
+  if (!util.isBuffer(chunk) &&
+      !util.isString(chunk) &&
+      !util.isNullOrUndefined(chunk) &&
       !state.objectMode) {
     er = new TypeError('Invalid non-string/buffer chunk');
   }
@@ -9075,12 +9221,8 @@ function onEofChunk(stream, state) {
   }
   state.ended = true;
 
-  // if we've ended and we have some data left, then emit
-  // 'readable' now to make sure it gets picked up.
-  if (state.length > 0)
-    emitReadable(stream);
-  else
-    endReadable(stream);
+  // emit 'readable' now to make sure it gets picked up.
+  emitReadable(stream);
 }
 
 // Don't emit readable right away in sync mode, because this can trigger
@@ -9089,20 +9231,22 @@ function onEofChunk(stream, state) {
 function emitReadable(stream) {
   var state = stream._readableState;
   state.needReadable = false;
-  if (state.emittedReadable)
-    return;
-
-  state.emittedReadable = true;
-  if (state.sync)
-    process.nextTick(function() {
+  if (!state.emittedReadable) {
+    debug('emitReadable', state.flowing);
+    state.emittedReadable = true;
+    if (state.sync)
+      process.nextTick(function() {
+        emitReadable_(stream);
+      });
+    else
       emitReadable_(stream);
-    });
-  else
-    emitReadable_(stream);
+  }
 }
 
 function emitReadable_(stream) {
+  debug('emit readable');
   stream.emit('readable');
+  flow(stream);
 }
 
 
@@ -9125,6 +9269,7 @@ function maybeReadMore_(stream, state) {
   var len = state.length;
   while (!state.reading && !state.flowing && !state.ended &&
          state.length < state.highWaterMark) {
+    debug('maybeReadMore read 0');
     stream.read(0);
     if (len === state.length)
       // didn't get any data, stop spinning.
@@ -9159,6 +9304,7 @@ Readable.prototype.pipe = function(dest, pipeOpts) {
       break;
   }
   state.pipesCount += 1;
+  debug('pipe count=%d opts=%j', state.pipesCount, pipeOpts);
 
   var doEnd = (!pipeOpts || pipeOpts.end !== false) &&
               dest !== process.stdout &&
@@ -9172,11 +9318,14 @@ Readable.prototype.pipe = function(dest, pipeOpts) {
 
   dest.on('unpipe', onunpipe);
   function onunpipe(readable) {
-    if (readable !== src) return;
-    cleanup();
+    debug('onunpipe');
+    if (readable === src) {
+      cleanup();
+    }
   }
 
   function onend() {
+    debug('onend');
     dest.end();
   }
 
@@ -9188,6 +9337,7 @@ Readable.prototype.pipe = function(dest, pipeOpts) {
   dest.on('drain', ondrain);
 
   function cleanup() {
+    debug('cleanup');
     // cleanup event handlers once the pipe is broken
     dest.removeListener('close', onclose);
     dest.removeListener('finish', onfinish);
@@ -9196,19 +9346,34 @@ Readable.prototype.pipe = function(dest, pipeOpts) {
     dest.removeListener('unpipe', onunpipe);
     src.removeListener('end', onend);
     src.removeListener('end', cleanup);
+    src.removeListener('data', ondata);
 
     // if the reader is waiting for a drain event from this
     // specific writer, then it would cause it to never start
     // flowing again.
     // So, if this is awaiting a drain, then we just call it now.
     // If we don't know, then assume that we are waiting for one.
-    if (!dest._writableState || dest._writableState.needDrain)
+    if (state.awaitDrain &&
+        (!dest._writableState || dest._writableState.needDrain))
       ondrain();
+  }
+
+  src.on('data', ondata);
+  function ondata(chunk) {
+    debug('ondata');
+    var ret = dest.write(chunk);
+    if (false === ret) {
+      debug('false write response, pause',
+            src._readableState.awaitDrain);
+      src._readableState.awaitDrain++;
+      src.pause();
+    }
   }
 
   // if the dest has an error, then stop piping into it.
   // however, don't suppress the throwing behavior for this.
   function onerror(er) {
+    debug('onerror', er);
     unpipe();
     dest.removeListener('error', onerror);
     if (EE.listenerCount(dest, 'error') === 0)
@@ -9232,12 +9397,14 @@ Readable.prototype.pipe = function(dest, pipeOpts) {
   }
   dest.once('close', onclose);
   function onfinish() {
+    debug('onfinish');
     dest.removeListener('close', onclose);
     unpipe();
   }
   dest.once('finish', onfinish);
 
   function unpipe() {
+    debug('unpipe');
     src.unpipe(dest);
   }
 
@@ -9246,16 +9413,8 @@ Readable.prototype.pipe = function(dest, pipeOpts) {
 
   // start the flow if it hasn't been started already.
   if (!state.flowing) {
-    // the handler that waits for readable events after all
-    // the data gets sucked out in flow.
-    // This would be easier to follow with a .once() handler
-    // in flow(), but that is too slow.
-    this.on('readable', pipeOnReadable);
-
-    state.flowing = true;
-    process.nextTick(function() {
-      flow(src);
-    });
+    debug('pipe resume');
+    src.resume();
   }
 
   return dest;
@@ -9263,63 +9422,15 @@ Readable.prototype.pipe = function(dest, pipeOpts) {
 
 function pipeOnDrain(src) {
   return function() {
-    var dest = this;
     var state = src._readableState;
-    state.awaitDrain--;
-    if (state.awaitDrain === 0)
+    debug('pipeOnDrain', state.awaitDrain);
+    if (state.awaitDrain)
+      state.awaitDrain--;
+    if (state.awaitDrain === 0 && EE.listenerCount(src, 'data')) {
+      state.flowing = true;
       flow(src);
-  };
-}
-
-function flow(src) {
-  var state = src._readableState;
-  var chunk;
-  state.awaitDrain = 0;
-
-  function write(dest, i, list) {
-    var written = dest.write(chunk);
-    if (false === written) {
-      state.awaitDrain++;
     }
-  }
-
-  while (state.pipesCount && null !== (chunk = src.read())) {
-
-    if (state.pipesCount === 1)
-      write(state.pipes, 0, null);
-    else
-      forEach(state.pipes, write);
-
-    src.emit('data', chunk);
-
-    // if anyone needs a drain, then we have to wait for that.
-    if (state.awaitDrain > 0)
-      return;
-  }
-
-  // if every destination was unpiped, either before entering this
-  // function, or in the while loop, then stop flowing.
-  //
-  // NB: This is a pretty rare edge case.
-  if (state.pipesCount === 0) {
-    state.flowing = false;
-
-    // if there were data event listeners added, then switch to old mode.
-    if (EE.listenerCount(src, 'data') > 0)
-      emitDataEvents(src);
-    return;
-  }
-
-  // at this point, no one needed a drain, so we just ran out of data
-  // on the next readable event, start it over again.
-  state.ranOut = true;
-}
-
-function pipeOnReadable() {
-  if (this._readableState.ranOut) {
-    this._readableState.ranOut = false;
-    flow(this);
-  }
+  };
 }
 
 
@@ -9342,7 +9453,6 @@ Readable.prototype.unpipe = function(dest) {
     // got a match.
     state.pipes = null;
     state.pipesCount = 0;
-    this.removeListener('readable', pipeOnReadable);
     state.flowing = false;
     if (dest)
       dest.emit('unpipe', this);
@@ -9357,7 +9467,6 @@ Readable.prototype.unpipe = function(dest) {
     var len = state.pipesCount;
     state.pipes = null;
     state.pipesCount = 0;
-    this.removeListener('readable', pipeOnReadable);
     state.flowing = false;
 
     for (var i = 0; i < len; i++)
@@ -9385,8 +9494,11 @@ Readable.prototype.unpipe = function(dest) {
 Readable.prototype.on = function(ev, fn) {
   var res = Stream.prototype.on.call(this, ev, fn);
 
-  if (ev === 'data' && !this._readableState.flowing)
-    emitDataEvents(this);
+  // If listening to data, and it has not explicitly been paused,
+  // then call resume to start the flow of data on the next tick.
+  if (ev === 'data' && false !== this._readableState.flowing) {
+    this.resume();
+  }
 
   if (ev === 'readable' && this.readable) {
     var state = this._readableState;
@@ -9395,7 +9507,11 @@ Readable.prototype.on = function(ev, fn) {
       state.emittedReadable = false;
       state.needReadable = true;
       if (!state.reading) {
-        this.read(0);
+        var self = this;
+        process.nextTick(function() {
+          debug('readable nexttick read 0');
+          self.read(0);
+        });
       } else if (state.length) {
         emitReadable(this, state);
       }
@@ -9409,63 +9525,54 @@ Readable.prototype.addListener = Readable.prototype.on;
 // pause() and resume() are remnants of the legacy readable stream API
 // If the user uses them, then switch into old mode.
 Readable.prototype.resume = function() {
-  emitDataEvents(this);
-  this.read(0);
-  this.emit('resume');
+  var state = this._readableState;
+  if (!state.flowing) {
+    debug('resume');
+    state.flowing = true;
+    if (!state.reading) {
+      debug('resume read 0');
+      this.read(0);
+    }
+    resume(this, state);
+  }
+  return this;
 };
+
+function resume(stream, state) {
+  if (!state.resumeScheduled) {
+    state.resumeScheduled = true;
+    process.nextTick(function() {
+      resume_(stream, state);
+    });
+  }
+}
+
+function resume_(stream, state) {
+  state.resumeScheduled = false;
+  stream.emit('resume');
+  flow(stream);
+  if (state.flowing && !state.reading)
+    stream.read(0);
+}
 
 Readable.prototype.pause = function() {
-  emitDataEvents(this, true);
-  this.emit('pause');
+  debug('call pause flowing=%j', this._readableState.flowing);
+  if (false !== this._readableState.flowing) {
+    debug('pause');
+    this._readableState.flowing = false;
+    this.emit('pause');
+  }
+  return this;
 };
 
-function emitDataEvents(stream, startPaused) {
+function flow(stream) {
   var state = stream._readableState;
-
+  debug('flow', state.flowing);
   if (state.flowing) {
-    // https://github.com/isaacs/readable-stream/issues/16
-    throw new Error('Cannot switch to old mode now.');
+    do {
+      var chunk = stream.read();
+    } while (null !== chunk && state.flowing);
   }
-
-  var paused = startPaused || false;
-  var readable = false;
-
-  // convert to an old-style stream.
-  stream.readable = true;
-  stream.pipe = Stream.prototype.pipe;
-  stream.on = stream.addListener = Stream.prototype.on;
-
-  stream.on('readable', function() {
-    readable = true;
-
-    var c;
-    while (!paused && (null !== (c = stream.read())))
-      stream.emit('data', c);
-
-    if (c === null) {
-      readable = false;
-      stream._readableState.needReadable = true;
-    }
-  });
-
-  stream.pause = function() {
-    paused = true;
-    this.emit('pause');
-  };
-
-  stream.resume = function() {
-    paused = false;
-    if (readable)
-      process.nextTick(function() {
-        stream.emit('readable');
-      });
-    else
-      this.read(0);
-    this.emit('resume');
-  };
-
-  // now make it start, just in case it hadn't already.
-  stream.emit('readable');
 }
 
 // wrap an old-style stream as the async data source.
@@ -9477,6 +9584,7 @@ Readable.prototype.wrap = function(stream) {
 
   var self = this;
   stream.on('end', function() {
+    debug('wrapped end');
     if (state.decoder && !state.ended) {
       var chunk = state.decoder.end();
       if (chunk && chunk.length)
@@ -9487,14 +9595,10 @@ Readable.prototype.wrap = function(stream) {
   });
 
   stream.on('data', function(chunk) {
+    debug('wrapped data');
     if (state.decoder)
       chunk = state.decoder.write(chunk);
-
-    // don't skip over falsy values in objectMode
-    //if (state.objectMode && util.isNullOrUndefined(chunk))
-    if (state.objectMode && (chunk === null || chunk === undefined))
-      return;
-    else if (!state.objectMode && (!chunk || !chunk.length))
+    if (!chunk || !state.objectMode && !chunk.length)
       return;
 
     var ret = self.push(chunk);
@@ -9507,8 +9611,7 @@ Readable.prototype.wrap = function(stream) {
   // proxy all the other methods.
   // important when wrapping filters and duplexes.
   for (var i in stream) {
-    if (typeof stream[i] === 'function' &&
-        typeof this[i] === 'undefined') {
+    if (util.isFunction(stream[i]) && util.isUndefined(this[i])) {
       this[i] = function(method) { return function() {
         return stream[method].apply(stream, arguments);
       }}(i);
@@ -9524,6 +9627,7 @@ Readable.prototype.wrap = function(stream) {
   // when we try to consume some more bytes, simply unpause the
   // underlying stream.
   self._read = function(n) {
+    debug('wrapped _read', n);
     if (paused) {
       paused = false;
       stream.resume();
@@ -9612,7 +9716,7 @@ function endReadable(stream) {
   if (state.length > 0)
     throw new Error('endReadable called on non-empty stream');
 
-  if (!state.endEmitted && state.calledRead) {
+  if (!state.endEmitted) {
     state.ended = true;
     process.nextTick(function() {
       // Check that we didn't get one last unshift.
@@ -9639,7 +9743,7 @@ function indexOf (xs, x) {
 }
 
 }).call(this,require('_process'))
-},{"_process":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/process/browser.js","buffer":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/buffer/index.js","core-util-is":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/readable-stream/node_modules/core-util-is/lib/util.js","events":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/events/events.js","inherits":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/inherits/inherits_browser.js","isarray":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/isarray/index.js","stream":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/stream-browserify/index.js","string_decoder/":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/string_decoder/index.js"}],"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/readable-stream/lib/_stream_transform.js":[function(require,module,exports){
+},{"./_stream_duplex":41,"_process":35,"buffer":23,"core-util-is":46,"events":27,"inherits":33,"isarray":34,"stream":51,"string_decoder/":52,"util":22}],44:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -9739,7 +9843,7 @@ function afterTransform(stream, er, data) {
   ts.writechunk = null;
   ts.writecb = null;
 
-  if (data !== null && data !== undefined)
+  if (!util.isNullOrUndefined(data))
     stream.push(data);
 
   if (cb)
@@ -9759,7 +9863,7 @@ function Transform(options) {
 
   Duplex.call(this, options);
 
-  var ts = this._transformState = new TransformState(options, this);
+  this._transformState = new TransformState(options, this);
 
   // when the writable side finishes, then flush out anything remaining.
   var stream = this;
@@ -9772,8 +9876,8 @@ function Transform(options) {
   // sync guard flag.
   this._readableState.sync = false;
 
-  this.once('finish', function() {
-    if ('function' === typeof this._flush)
+  this.once('prefinish', function() {
+    if (util.isFunction(this._flush))
       this._flush(function(er) {
         done(stream, er);
       });
@@ -9821,7 +9925,7 @@ Transform.prototype._write = function(chunk, encoding, cb) {
 Transform.prototype._read = function(n) {
   var ts = this._transformState;
 
-  if (ts.writechunk !== null && ts.writecb && !ts.transforming) {
+  if (!util.isNull(ts.writechunk) && ts.writecb && !ts.transforming) {
     ts.transforming = true;
     this._transform(ts.writechunk, ts.writeencoding, ts.afterTransform);
   } else {
@@ -9839,7 +9943,6 @@ function done(stream, er) {
   // if there's nothing in the write buffer, then that means
   // that nothing more will ever be provided
   var ws = stream._writableState;
-  var rs = stream._readableState;
   var ts = stream._transformState;
 
   if (ws.length)
@@ -9851,7 +9954,7 @@ function done(stream, er) {
   return stream.push(null);
 }
 
-},{"./_stream_duplex":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/readable-stream/lib/_stream_duplex.js","core-util-is":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/readable-stream/node_modules/core-util-is/lib/util.js","inherits":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/inherits/inherits_browser.js"}],"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/readable-stream/lib/_stream_writable.js":[function(require,module,exports){
+},{"./_stream_duplex":41,"core-util-is":46,"inherits":33}],45:[function(require,module,exports){
 (function (process){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -9903,17 +10006,23 @@ function WriteReq(chunk, encoding, cb) {
 }
 
 function WritableState(options, stream) {
+  var Duplex = require('./_stream_duplex');
+
   options = options || {};
 
   // the point at which write() starts returning false
   // Note: 0 is a valid value, means that we always return false if
   // the entire buffer is not flushed immediately on write()
   var hwm = options.highWaterMark;
-  this.highWaterMark = (hwm || hwm === 0) ? hwm : 16 * 1024;
+  var defaultHwm = options.objectMode ? 16 : 16 * 1024;
+  this.highWaterMark = (hwm || hwm === 0) ? hwm : defaultHwm;
 
   // object stream flag to indicate whether or not this stream
   // contains buffers or objects.
   this.objectMode = !!options.objectMode;
+
+  if (stream instanceof Duplex)
+    this.objectMode = this.objectMode || !!options.writableObjectMode;
 
   // cast to ints.
   this.highWaterMark = ~~this.highWaterMark;
@@ -9945,8 +10054,11 @@ function WritableState(options, stream) {
   // a flag to see when we're in the middle of a write.
   this.writing = false;
 
+  // when true all writes will be buffered until .uncork() call
+  this.corked = 0;
+
   // a flag to be able to tell if the onwrite cb is called immediately,
-  // or on a later tick.  We set this to true at first, becuase any
+  // or on a later tick.  We set this to true at first, because any
   // actions that shouldn't happen until "later" should generally also
   // not happen before the first write call.
   this.sync = true;
@@ -9968,6 +10080,14 @@ function WritableState(options, stream) {
   this.writelen = 0;
 
   this.buffer = [];
+
+  // number of pending user-supplied write callbacks
+  // this must be 0 before 'finish' can be emitted
+  this.pendingcb = 0;
+
+  // emit prefinish if the only thing we're waiting for is _write cbs
+  // This is relevant for synchronous Transform streams
+  this.prefinished = false;
 
   // True if the error was already emitted and should not be thrown again
   this.errorEmitted = false;
@@ -10011,10 +10131,9 @@ function writeAfterEnd(stream, state, cb) {
 // how many bytes or characters.
 function validChunk(stream, state, chunk, cb) {
   var valid = true;
-  if (!Buffer.isBuffer(chunk) &&
-      'string' !== typeof chunk &&
-      chunk !== null &&
-      chunk !== undefined &&
+  if (!util.isBuffer(chunk) &&
+      !util.isString(chunk) &&
+      !util.isNullOrUndefined(chunk) &&
       !state.objectMode) {
     var er = new TypeError('Invalid non-string/buffer chunk');
     stream.emit('error', er);
@@ -10030,31 +10149,54 @@ Writable.prototype.write = function(chunk, encoding, cb) {
   var state = this._writableState;
   var ret = false;
 
-  if (typeof encoding === 'function') {
+  if (util.isFunction(encoding)) {
     cb = encoding;
     encoding = null;
   }
 
-  if (Buffer.isBuffer(chunk))
+  if (util.isBuffer(chunk))
     encoding = 'buffer';
   else if (!encoding)
     encoding = state.defaultEncoding;
 
-  if (typeof cb !== 'function')
+  if (!util.isFunction(cb))
     cb = function() {};
 
   if (state.ended)
     writeAfterEnd(this, state, cb);
-  else if (validChunk(this, state, chunk, cb))
+  else if (validChunk(this, state, chunk, cb)) {
+    state.pendingcb++;
     ret = writeOrBuffer(this, state, chunk, encoding, cb);
+  }
 
   return ret;
+};
+
+Writable.prototype.cork = function() {
+  var state = this._writableState;
+
+  state.corked++;
+};
+
+Writable.prototype.uncork = function() {
+  var state = this._writableState;
+
+  if (state.corked) {
+    state.corked--;
+
+    if (!state.writing &&
+        !state.corked &&
+        !state.finished &&
+        !state.bufferProcessing &&
+        state.buffer.length)
+      clearBuffer(this, state);
+  }
 };
 
 function decodeChunk(state, chunk, encoding) {
   if (!state.objectMode &&
       state.decodeStrings !== false &&
-      typeof chunk === 'string') {
+      util.isString(chunk)) {
     chunk = new Buffer(chunk, encoding);
   }
   return chunk;
@@ -10065,7 +10207,7 @@ function decodeChunk(state, chunk, encoding) {
 // If we return false, then we need a drain event, so set that flag.
 function writeOrBuffer(stream, state, chunk, encoding, cb) {
   chunk = decodeChunk(state, chunk, encoding);
-  if (Buffer.isBuffer(chunk))
+  if (util.isBuffer(chunk))
     encoding = 'buffer';
   var len = state.objectMode ? 1 : chunk.length;
 
@@ -10076,30 +10218,36 @@ function writeOrBuffer(stream, state, chunk, encoding, cb) {
   if (!ret)
     state.needDrain = true;
 
-  if (state.writing)
+  if (state.writing || state.corked)
     state.buffer.push(new WriteReq(chunk, encoding, cb));
   else
-    doWrite(stream, state, len, chunk, encoding, cb);
+    doWrite(stream, state, false, len, chunk, encoding, cb);
 
   return ret;
 }
 
-function doWrite(stream, state, len, chunk, encoding, cb) {
+function doWrite(stream, state, writev, len, chunk, encoding, cb) {
   state.writelen = len;
   state.writecb = cb;
   state.writing = true;
   state.sync = true;
-  stream._write(chunk, encoding, state.onwrite);
+  if (writev)
+    stream._writev(chunk, state.onwrite);
+  else
+    stream._write(chunk, encoding, state.onwrite);
   state.sync = false;
 }
 
 function onwriteError(stream, state, sync, er, cb) {
   if (sync)
     process.nextTick(function() {
+      state.pendingcb--;
       cb(er);
     });
-  else
+  else {
+    state.pendingcb--;
     cb(er);
+  }
 
   stream._writableState.errorEmitted = true;
   stream.emit('error', er);
@@ -10125,8 +10273,12 @@ function onwrite(stream, er) {
     // Check if we're actually ready to finish, but don't emit yet
     var finished = needFinish(stream, state);
 
-    if (!finished && !state.bufferProcessing && state.buffer.length)
+    if (!finished &&
+        !state.corked &&
+        !state.bufferProcessing &&
+        state.buffer.length) {
       clearBuffer(stream, state);
+    }
 
     if (sync) {
       process.nextTick(function() {
@@ -10141,9 +10293,9 @@ function onwrite(stream, er) {
 function afterWrite(stream, state, finished, cb) {
   if (!finished)
     onwriteDrain(stream, state);
+  state.pendingcb--;
   cb();
-  if (finished)
-    finishMaybe(stream, state);
+  finishMaybe(stream, state);
 }
 
 // Must force callback to be called on nextTick, so that we don't
@@ -10161,50 +10313,81 @@ function onwriteDrain(stream, state) {
 function clearBuffer(stream, state) {
   state.bufferProcessing = true;
 
-  for (var c = 0; c < state.buffer.length; c++) {
-    var entry = state.buffer[c];
-    var chunk = entry.chunk;
-    var encoding = entry.encoding;
-    var cb = entry.callback;
-    var len = state.objectMode ? 1 : chunk.length;
+  if (stream._writev && state.buffer.length > 1) {
+    // Fast case, write everything using _writev()
+    var cbs = [];
+    for (var c = 0; c < state.buffer.length; c++)
+      cbs.push(state.buffer[c].callback);
 
-    doWrite(stream, state, len, chunk, encoding, cb);
+    // count the one we are adding, as well.
+    // TODO(isaacs) clean this up
+    state.pendingcb++;
+    doWrite(stream, state, true, state.length, state.buffer, '', function(err) {
+      for (var i = 0; i < cbs.length; i++) {
+        state.pendingcb--;
+        cbs[i](err);
+      }
+    });
 
-    // if we didn't call the onwrite immediately, then
-    // it means that we need to wait until it does.
-    // also, that means that the chunk and cb are currently
-    // being processed, so move the buffer counter past them.
-    if (state.writing) {
-      c++;
-      break;
+    // Clear buffer
+    state.buffer = [];
+  } else {
+    // Slow case, write chunks one-by-one
+    for (var c = 0; c < state.buffer.length; c++) {
+      var entry = state.buffer[c];
+      var chunk = entry.chunk;
+      var encoding = entry.encoding;
+      var cb = entry.callback;
+      var len = state.objectMode ? 1 : chunk.length;
+
+      doWrite(stream, state, false, len, chunk, encoding, cb);
+
+      // if we didn't call the onwrite immediately, then
+      // it means that we need to wait until it does.
+      // also, that means that the chunk and cb are currently
+      // being processed, so move the buffer counter past them.
+      if (state.writing) {
+        c++;
+        break;
+      }
     }
+
+    if (c < state.buffer.length)
+      state.buffer = state.buffer.slice(c);
+    else
+      state.buffer.length = 0;
   }
 
   state.bufferProcessing = false;
-  if (c < state.buffer.length)
-    state.buffer = state.buffer.slice(c);
-  else
-    state.buffer.length = 0;
 }
 
 Writable.prototype._write = function(chunk, encoding, cb) {
   cb(new Error('not implemented'));
+
 };
+
+Writable.prototype._writev = null;
 
 Writable.prototype.end = function(chunk, encoding, cb) {
   var state = this._writableState;
 
-  if (typeof chunk === 'function') {
+  if (util.isFunction(chunk)) {
     cb = chunk;
     chunk = null;
     encoding = null;
-  } else if (typeof encoding === 'function') {
+  } else if (util.isFunction(encoding)) {
     cb = encoding;
     encoding = null;
   }
 
-  if (typeof chunk !== 'undefined' && chunk !== null)
+  if (!util.isNullOrUndefined(chunk))
     this.write(chunk, encoding);
+
+  // .end() fully uncorks
+  if (state.corked) {
+    state.corked = 1;
+    this.uncork();
+  }
 
   // ignore unnecessary end() calls.
   if (!state.ending && !state.finished)
@@ -10219,11 +10402,22 @@ function needFinish(stream, state) {
           !state.writing);
 }
 
+function prefinish(stream, state) {
+  if (!state.prefinished) {
+    state.prefinished = true;
+    stream.emit('prefinish');
+  }
+}
+
 function finishMaybe(stream, state) {
   var need = needFinish(stream, state);
   if (need) {
-    state.finished = true;
-    stream.emit('finish');
+    if (state.pendingcb === 0) {
+      prefinish(stream, state);
+      state.finished = true;
+      stream.emit('finish');
+    } else
+      prefinish(stream, state);
   }
   return need;
 }
@@ -10241,7 +10435,7 @@ function endWritable(stream, state, cb) {
 }
 
 }).call(this,require('_process'))
-},{"./_stream_duplex":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/readable-stream/lib/_stream_duplex.js","_process":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/process/browser.js","buffer":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/buffer/index.js","core-util-is":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/readable-stream/node_modules/core-util-is/lib/util.js","inherits":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/inherits/inherits_browser.js","stream":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/stream-browserify/index.js"}],"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/readable-stream/node_modules/core-util-is/lib/util.js":[function(require,module,exports){
+},{"./_stream_duplex":41,"_process":35,"buffer":23,"core-util-is":46,"inherits":33,"stream":51}],46:[function(require,module,exports){
 (function (Buffer){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -10351,26 +10545,25 @@ function objectToString(o) {
   return Object.prototype.toString.call(o);
 }
 }).call(this,require("buffer").Buffer)
-},{"buffer":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/buffer/index.js"}],"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/readable-stream/passthrough.js":[function(require,module,exports){
+},{"buffer":23}],47:[function(require,module,exports){
 module.exports = require("./lib/_stream_passthrough.js")
 
-},{"./lib/_stream_passthrough.js":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/readable-stream/lib/_stream_passthrough.js"}],"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/readable-stream/readable.js":[function(require,module,exports){
-var Stream = require('stream'); // hack to fix a circular dependency issue when used with browserify
+},{"./lib/_stream_passthrough.js":42}],48:[function(require,module,exports){
 exports = module.exports = require('./lib/_stream_readable.js');
-exports.Stream = Stream;
+exports.Stream = require('stream');
 exports.Readable = exports;
 exports.Writable = require('./lib/_stream_writable.js');
 exports.Duplex = require('./lib/_stream_duplex.js');
 exports.Transform = require('./lib/_stream_transform.js');
 exports.PassThrough = require('./lib/_stream_passthrough.js');
 
-},{"./lib/_stream_duplex.js":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/readable-stream/lib/_stream_duplex.js","./lib/_stream_passthrough.js":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/readable-stream/lib/_stream_passthrough.js","./lib/_stream_readable.js":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/readable-stream/lib/_stream_readable.js","./lib/_stream_transform.js":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/readable-stream/lib/_stream_transform.js","./lib/_stream_writable.js":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/readable-stream/lib/_stream_writable.js","stream":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/stream-browserify/index.js"}],"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/readable-stream/transform.js":[function(require,module,exports){
+},{"./lib/_stream_duplex.js":41,"./lib/_stream_passthrough.js":42,"./lib/_stream_readable.js":43,"./lib/_stream_transform.js":44,"./lib/_stream_writable.js":45,"stream":51}],49:[function(require,module,exports){
 module.exports = require("./lib/_stream_transform.js")
 
-},{"./lib/_stream_transform.js":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/readable-stream/lib/_stream_transform.js"}],"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/readable-stream/writable.js":[function(require,module,exports){
+},{"./lib/_stream_transform.js":44}],50:[function(require,module,exports){
 module.exports = require("./lib/_stream_writable.js")
 
-},{"./lib/_stream_writable.js":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/readable-stream/lib/_stream_writable.js"}],"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/stream-browserify/index.js":[function(require,module,exports){
+},{"./lib/_stream_writable.js":45}],51:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -10499,7 +10692,7 @@ Stream.prototype.pipe = function(dest, options) {
   return dest;
 };
 
-},{"events":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/events/events.js","inherits":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/inherits/inherits_browser.js","readable-stream/duplex.js":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/readable-stream/duplex.js","readable-stream/passthrough.js":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/readable-stream/passthrough.js","readable-stream/readable.js":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/readable-stream/readable.js","readable-stream/transform.js":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/readable-stream/transform.js","readable-stream/writable.js":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/readable-stream/writable.js"}],"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/string_decoder/index.js":[function(require,module,exports){
+},{"events":27,"inherits":33,"readable-stream/duplex.js":40,"readable-stream/passthrough.js":47,"readable-stream/readable.js":48,"readable-stream/transform.js":49,"readable-stream/writable.js":50}],52:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -10722,7 +10915,7 @@ function base64DetectIncompleteChar(buffer) {
   this.charLength = this.charReceived ? 3 : 0;
 }
 
-},{"buffer":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/buffer/index.js"}],"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/url/url.js":[function(require,module,exports){
+},{"buffer":23}],53:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -11431,14 +11624,14 @@ function isNullOrUndefined(arg) {
   return  arg == null;
 }
 
-},{"punycode":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/punycode/punycode.js","querystring":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/querystring-es3/index.js"}],"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/util/support/isBufferBrowser.js":[function(require,module,exports){
+},{"punycode":36,"querystring":39}],54:[function(require,module,exports){
 module.exports = function isBuffer(arg) {
   return arg && typeof arg === 'object'
     && typeof arg.copy === 'function'
     && typeof arg.fill === 'function'
     && typeof arg.readUInt8 === 'function';
 }
-},{}],"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/util/util.js":[function(require,module,exports){
+},{}],55:[function(require,module,exports){
 (function (process,global){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -12028,4 +12221,4 @@ function hasOwnProperty(obj, prop) {
 }
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./support/isBuffer":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/util/support/isBufferBrowser.js","_process":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/process/browser.js","inherits":"/Users/tanc/projects/kano-world-sdk/node_modules/browserify/node_modules/inherits/inherits_browser.js"}]},{},["/Users/tanc/projects/kano-world-sdk/lib/index.js"]);
+},{"./support/isBuffer":54,"_process":35,"inherits":33}]},{},[7]);
