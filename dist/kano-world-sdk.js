@@ -6,6 +6,12 @@ module.exports = {
 },{}],2:[function(require,module,exports){
 var error = require('./error');
 
+var warn = function () {
+    if (console && typeof console.warn === "function") {
+        console.warn(arguments);
+    }
+};
+
 var auth, apiService;
 
 module.exports = function (config) {
@@ -142,7 +148,7 @@ module.exports = function (config) {
 
     var apiService = new Service(config.API_URL)
         .use(middleware)
-        .on('error', console.warn);
+        .on('error', warn);
 
     return apiService
 
