@@ -1,6 +1,6 @@
 {
   "name": "kano-world-sdk",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "description": "Kano World SDK",
   "main": "lib/index.js",
   "scripts": {
@@ -12,6 +12,8 @@
   "dependencies": {
     "api-service": "^1.0.0",
     "browserify": "^6.3.3",
-    "watchify": "^2.1.1"
+    "watchify": "^2.1.1",
+    "haikunator": "^1.0.1",
+    "request-promise": "^0.4.3"
   }
 }
