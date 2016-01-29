@@ -100,15 +100,51 @@ KW_SDK.init(function (err) {
 
 	KW_SDK.appStorage.set('my-app-name', { level: 1 }, function (err) {
 		if (err) { throw err; }
-	
+
 		// Data stored on your profile stats
-		
+
 		KW_SDK.appStorage.get('my-app-name', function (err, data) {
 			if (err) { throw err; }
-	
+
 			console.log(data);
 			// { level: 1 }
 		});
 	});
 });
 ```
+
+### Custom Elements
+
+You can register custom elements for login/register forms. These forms will take care of the field validation and authentication
+and trigger events to notify when login/register/errors occurs.
+
+You can register these elements like so:
+
+```js
+KW_SDK.registerForms();
+```
+
+You will then be able to use them in your HTML pages.
+
+Available elements:
+
+#### kano-login-form
+Display a complete login form.
+Usage:
+```html
+<kano-login-form></kano-login-form>
+```
+Events:
+ - success: The authentication process succeeded. (Will contain the session in the `details` attribute)
+ - error: The authentication process failed.
+
+
+#### kano-register-form
+Display a complete register form.
+Usage:
+```html
+<kano-register-form></kano-register-form>
+```
+Events:
+ - success: The authentication process succeeded. (Will contain the session in the `details` attribute)
+ - error: The authentication process failed.
