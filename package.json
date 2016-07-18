@@ -13,7 +13,6 @@
     "api-service": "^1.0.0",
     "browserify": "^6.3.3",
     "haikunator": "^1.0.1",
-    "request-promise": "^0.4.3",
     "watchify": "^2.1.1",
     "x-tag": "^1.5.6"
   }
