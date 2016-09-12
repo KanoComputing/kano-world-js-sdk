@@ -1,0 +1,63 @@
+<html>
+    <head></head>
+    <body>
+        <script>
+            var MESSAGE_NAMESPACE = 'kw-xd-auth',
+                authorizedOrigins = [
+                    /^http(s)?:\/\/(.*)(\.)?kano.me$/,
+                    /^http(s)?:\/\/localhost/
+                ]
+
+            function sendMessage (data) {
+                data.namespace = MESSAGE_NAMESPACE;
+                // Accept all origins, we have a custom origin checking
+                parent.postMessage(JSON.stringify(data), '*');
+            }
+
+            function getToken () {
+                var token = localStorage.getItem('KW_TOKEN');
+                sendMessage({
+                    id: 'token',
+                    token: token
+                });
+            }
+
+            function messageReceived (event) {
+                var origin = event.origin || event.originalEvent.origin, // For Chrome, the origin property is in the event.originalEvent object.
+                    isAuthorized,
+                    data;
+
+                // Check the origin of the message
+                isAuthorized = authorizedOrigins.some(function (reg) {
+                    return reg.test(origin);
+                });
+
+                // Send an error if the origin is not authorized
+                if (!isAuthorized) {
+                    sendMessage({ id: 'error', message: 'The origin ' + origin + ' is not supported' });
+                    return;
+                }
+                try {
+                    data = JSON.parse(event.data);
+                } catch (err) {
+
+                }
+
+                if (data && data.namespace === MESSAGE_NAMESPACE) {
+                    if (data.action === 'get-token') {
+                        getToken();
+                    }
+                }
+            }
+
+            function sendOnLoad() {
+                sendMessage({
+                    id: 'iframe-ready'
+                });
+            }
+            //on creation
+            sendOnLoad();
+            window.addEventListener('message', messageReceived, false);
+        </script>
+    </body>
+</html>
