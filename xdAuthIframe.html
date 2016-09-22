@@ -22,6 +22,15 @@
                 });
             }
 
+            function removeToken () {
+                localStorage.removeItem('KW_TOKEN');
+                // FIXME KW uses session instead of KW_TOKEN, remove this when KW uses the right key 
+                localStorage.removeItem('session');
+                sendMessage({
+                    id: 'remove-token'
+                });
+            }
+
             function messageReceived (event) {
                 var origin = event.origin || event.originalEvent.origin, // For Chrome, the origin property is in the event.originalEvent object.
                     isAuthorized,
@@ -46,6 +55,8 @@
                 if (data && data.namespace === MESSAGE_NAMESPACE) {
                     if (data.action === 'get-token') {
                         getToken();
+                    } else if (data.action === 'remove-token') {
+                        removeToken();
                     }
                 }
             }
