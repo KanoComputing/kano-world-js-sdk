@@ -14,6 +14,15 @@
                 parent.postMessage(JSON.stringify(data), '*');
             }
 
+            function setToken (token) {
+                if (!token) {
+                    localStorage.removeItem('KW_TOKEN');
+                } else {
+                    localStorage.setItem('KW_TOKEN', token);
+                }
+                sendMessage({ id: 'set-token' });
+            }
+
             function getToken () {
                 var token = localStorage.getItem('KW_TOKEN');
                 sendMessage({
@@ -55,6 +64,8 @@
                 if (data && data.namespace === MESSAGE_NAMESPACE) {
                     if (data.action === 'get-token') {
                         getToken();
+                    } else if (data.action === 'set-token') {
+                        setToken(data.token);
                     } else if (data.action === 'remove-token') {
                         removeToken();
                     }
