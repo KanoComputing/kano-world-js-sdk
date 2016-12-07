@@ -17,6 +17,9 @@
             function setToken (token) {
                 if (!token) {
                     localStorage.removeItem('KW_TOKEN');
+
+                    /* This token is used by the new part of Kano World */
+                    localStorage.removeItem('KW_TOKENv2');
                 } else {
                     localStorage.setItem('KW_TOKEN', token);
                 }
@@ -33,7 +36,7 @@
 
             function removeToken () {
                 localStorage.removeItem('KW_TOKEN');
-                // FIXME KW uses session instead of KW_TOKEN, remove this when KW uses the right key 
+                // FIXME KW uses session instead of KW_TOKEN, remove this when KW uses the right key
                 localStorage.removeItem('session');
                 sendMessage({
                     id: 'remove-token'
