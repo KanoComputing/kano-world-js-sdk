@@ -4,7 +4,7 @@
   "description": "Kano World SDK",
   "main": "lib/index.js",
   "scripts": {
-    "build": "browserify lib/index.js -o dist/kano-world-sdk.js",
+    "build": "browserify lib/index.js --standalone Kano.SDK -o dist/kano-world-sdk.js",
     "watch": "watchify lib/index.js -o dist/kano-world-sdk.js"
   },
   "author": "Tancredi Trugenberger",
