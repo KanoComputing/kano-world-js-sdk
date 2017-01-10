@@ -79,6 +79,9 @@ module.exports = function (config) {
 
             if (!token) {
                 localStorage.removeItem('KW_TOKEN');
+
+                /* This token is used by the new part of Kano World */
+                localStorage.removeItem('KW_TOKENv2');
             } else {
                 localStorage.setItem('KW_TOKEN', token);
             }
@@ -1724,6 +1727,7 @@ function getFilename (file) {
       this._events.maxListeners = conf.maxListeners !== undefined ? conf.maxListeners : defaultMaxListeners;
       conf.wildcard && (this.wildcard = conf.wildcard);
       conf.newListener && (this.newListener = conf.newListener);
+      conf.verboseMemoryLeak && (this.verboseMemoryLeak = conf.verboseMemoryLeak);
 
       if (this.wildcard) {
         this.listenerTree = {};
@@ -1733,11 +1737,17 @@ function getFilename (file) {
     }
   }
 
-  function logPossibleMemoryLeak(count) {
-    console.error('(node) warning: possible EventEmitter memory ' +
-      'leak detected. %d listeners added. ' +
-      'Use emitter.setMaxListeners() to increase limit.',
-      count);
+  function logPossibleMemoryLeak(count, eventName) {
+    var errorMsg = '(node) warning: possible EventEmitter memory ' +
+        'leak detected. %d listeners added. ' +
+        'Use emitter.setMaxListeners() to increase limit.';
+
+    if(this.verboseMemoryLeak){
+      errorMsg += ' Event name: %s.';
+      console.error(errorMsg, count, eventName);
+    } else {
+      console.error(errorMsg, count);
+    }
 
     if (console.trace){
       console.trace();
@@ -1747,6 +1757,7 @@ function getFilename (file) {
   function EventEmitter(conf) {
     this._events = {};
     this.newListener = false;
+    this.verboseMemoryLeak = false;
     configure.call(this, conf);
   }
   EventEmitter.EventEmitter2 = EventEmitter; // backwards compatibility for exporting EventEmitter property
@@ -1904,7 +1915,7 @@ function getFilename (file) {
             tree._listeners.length > this._events.maxListeners
           ) {
             tree._listeners.warned = true;
-            logPossibleMemoryLeak(tree._listeners.length);
+            logPossibleMemoryLeak.call(this, tree._listeners.length, name);
           }
         }
         return true;
@@ -2202,7 +2213,7 @@ function getFilename (file) {
         this._events[type].length > this._events.maxListeners
       ) {
         this._events[type].warned = true;
-        logPossibleMemoryLeak(this._events[type].length);
+        logPossibleMemoryLeak.call(this, this._events[type].length, type);
       }
     }
 
@@ -3760,7 +3771,7 @@ var lookup = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 
 },{}],30:[function(require,module,exports){
 module.exports=require(29)
-},{"/Users/paul/kano/workspace/kano-world-js-sdk/node_modules/browser-resolve/empty.js":29}],31:[function(require,module,exports){
+},{"/Users/radek/kano/kano-world-js-sdk/node_modules/browser-resolve/empty.js":29}],31:[function(require,module,exports){
 /*!
  * The buffer module from node.js, for the browser.
  *
@@ -12918,7 +12929,7 @@ function isNullOrUndefined(arg) {
 
 },{"punycode":47,"querystring":52}],67:[function(require,module,exports){
 module.exports=require(41)
-},{"/Users/paul/kano/workspace/kano-world-js-sdk/node_modules/inherits/inherits_browser.js":41}],68:[function(require,module,exports){
+},{"/Users/radek/kano/kano-world-js-sdk/node_modules/inherits/inherits_browser.js":41}],68:[function(require,module,exports){
 module.exports = function isBuffer(arg) {
   return arg && typeof arg === 'object'
     && typeof arg.copy === 'function'
