@@ -1,6 +1,6 @@
 {
   "name": "kano-world-sdk",
-  "version": "3.0.14",
+  "version": "3.0.15",
   "description": "Kano World SDK",
   "main": "lib/index.js",
   "scripts": {
