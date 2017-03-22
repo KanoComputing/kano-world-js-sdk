@@ -63,12 +63,14 @@ module.exports = function (config) {
 var token = null,
     session = null,
     isKW,
+    isElectron,
     auth,
     xdAuth;
 
 module.exports = function (config) {
     config = config ? config : require('../config');
     isKW = config.WORLD_URL.indexOf(location.origin.replace(/(http:|https:)/, '')) !== -1;
+    isElectron = navigator.userAgent.indexOf("Electron") > -1;
 
     apiService = require('./kano-api')(config);
     xdAuth = require('./xd-auth')(config);
@@ -85,7 +87,7 @@ module.exports = function (config) {
             } else {
                 localStorage.setItem('KW_TOKEN', token);
             }
-            if (!disableCross && !isKW) {
+            if (!disableCross && !isKW && !isElectron) {
                 xdAuth.setToken(token);
             }
         },
@@ -101,7 +103,7 @@ module.exports = function (config) {
         logout: function (reload) {
             reload = typeof reload === 'undefined' ? true : reload;
             auth.setToken(null);
-            if (!isKW) {
+            if (!isKW && !isElectron) {
                 xdAuth.crossLogout(function (err) {
                     if (reload) {
                         location.reload();
@@ -130,8 +132,8 @@ module.exports = function (config) {
                     });
             }
 
-            // The current website is KW, we read directly the locaStorage
-            if (isKW) {
+            // The current website is either KW or running inside Electron, we read directly the locaStorage
+            if (isKW || isElectron) {
                 p = onToken(token || localStorage.getItem('KW_TOKEN'));
             }
             // Otherwise, contact KW to get the toekn throught the iframe
@@ -1226,7 +1228,7 @@ module.exports = function (api) {
             '<div class="x-username-field">\
                 <label style="float: left">Username</label>\
                 <div id="generateUsername" class="generate-nickname">Generate a Random Name</div>\
-                <input id="input" class="block" type="text" required/>\
+                <input id="input" class="block" type="text" required autofocus/>\
                 <div id="errors" class="errors"></div>\
             </div>',
             /*jshint multistr: false */
