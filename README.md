@@ -1,6 +1,8 @@
-# Kano World JS SDK
+# 🚨Kano World JS SDK — Unmaintained 🚨
 
-> Lightweight JavaScript SDK with basic tools to integrate Kano World login and basic features.
+Lightweight JavaScript SDK with basic tools to integrate Kano World login and basic features.
+
+**January 2019**: This project isn't being actively developed or maintained.
 
 ### Setup
 
